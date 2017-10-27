@@ -154,6 +154,7 @@ void Solver_Vereshchagin::initial_upwards_sweep(const JntArray &q, const JntArra
         //external forces are taken into account through s.U.
         Wrench FextLocal = F_total.M.Inverse() * f_ext[i];
         s.U = s.v * (s.H * s.v) - FextLocal; //f_ext[i];
+
         sum_U.push_back(s.U);
 
         if (segment.getJoint().getType() != Joint::None)

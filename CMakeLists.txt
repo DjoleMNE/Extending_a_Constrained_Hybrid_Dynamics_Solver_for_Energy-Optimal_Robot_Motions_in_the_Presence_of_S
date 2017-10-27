@@ -14,6 +14,7 @@ link_directories(
 
 add_executable(main
   src/main.cpp
+  src/solver_vereshchagin.cpp
 )
 
 target_link_libraries(main ${orocos_kdl_LIBRARIES})

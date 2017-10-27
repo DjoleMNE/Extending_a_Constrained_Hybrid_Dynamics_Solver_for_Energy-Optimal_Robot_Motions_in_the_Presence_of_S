@@ -1,4 +1,4 @@
-#include <kdl/chainidsolver_vereshchagin.hpp>
+#include <solver_vereshchagin.hpp>
 #include <kdl/framevel.hpp>
 #include <kdl/frames_io.hpp>
 #include <kdl/framevel_io.hpp>
@@ -113,7 +113,7 @@ void printlayouts(){
 }
 
 //Simulate motion of the arm to get joint positon, velosity and accelerations values
-void simulate_motion(ChainIdSolver_Vereshchagin solver, Jacobian alpha, JntArray betha){
+void simulate_motion(Solver_Vereshchagin solver, Jacobian alpha, JntArray betha){
     myfile.open ("/home/djole/Downloads/Master/R_&_D/KDL_GIT/Testing_repo/src/joint_poses.txt");
     simulationTime = _simulation_param*taskTimeConstant;
 
@@ -141,7 +141,10 @@ void simulate_motion(ChainIdSolver_Vereshchagin solver, Jacobian alpha, JntArray
 }
 
 //Calculate acceleration energy based on Gauss least constraint principle
+//Lower G
+// vector istead of array...
 double calculate_Gauss(double ff_torques[]){
+    // number_to
     double number_of_joints = chaindyn.getNrOfJoints();
     double number_of_segments = chaindyn.getNrOfSegments();
 
@@ -151,45 +154,25 @@ double calculate_Gauss(double ff_torques[]){
     Eigen::VectorXd segment_force(6);
     Eigen::MatrixXd rigidbodyinertia(6,6);
 
-    for (int j = 0; j < number_of_joints; j++){
-        joint_sum = joint_sum  + 0.5*(d[j]*pow(jointAccelerations[0](j),2)) - ff_torques[j]*jointAccelerations[0](j);
+    for (int j = 0; j < number_of_joints; j++)  {
+        joint_sum = joint_sum  + 0.5 * (d[j] * pow(jointAccelerations[0](j), 2)) - ff_torques[j] * jointAccelerations[0](j);
     }
 
-    for (int i = 0; i < number_of_segments; i++){
-        //maping from std vector to eigen vector types
-        //acc and force contain both linear and angular parts...as separate unfortunately!!
-        double* ptr1 = &sum_xDotdot[i][0];
-        double* ptr1_2 = &sum_xDotdot[i][1];
-        double* ptr2 = &sum_U[i][0];
-        double* ptr2_2= &sum_U[i][1];
-        Eigen::Map<Eigen::VectorXd> linear_acceleration(ptr1, 3);
-        Eigen::Map<Eigen::VectorXd> angular_acceleration(ptr1_2, 3);
-        Eigen::Map<Eigen::VectorXd> linear_force(ptr2, 3);
-        Eigen::Map<Eigen::VectorXd> angular_force(ptr2_2, 3);
+    for (int i = 0; i < number_of_segments; i++) {
+        segment_sum += 0.5 * (dot(sum_xDotdot[i], sum_H[i] * sum_xDotdot[i]) + dot(sum_U[i], sum_xDotdot[i]));
 
-        //apppending linear and angular parts in one vector
-        segment_acceleration << linear_acceleration, angular_acceleration;
-        segment_force << linear_force, angular_force;
-
-        //Deriving inertia RigidBody matrix from 3 parts: mass, vector from the reference frame  to cog and the rotational inertia
-        //Approach is based on Featherstone book (see page 33!)
-        rigidbodyinertia.block(0,0,3,3) = sum_H[i].I + sum_H[i].M*sum_H[i].H*sum_H[i].H.transpose();
-        rigidbodyinertia.block(3,0,3,3) = sum_H[i].M*sum_H[i].H.transpose();
-        rigidbodyinertia.block(0,3,3,3) = sum_H[i].M*sum_H[i].H;
-        rigidbodyinertia.block(3,3,3,3) = sum_H[i].M;
-
-        Eigen::VectorXd temp_segment_energy =  0.5*((segment_acceleration.transpose()*rigidbodyinertia)*segment_acceleration) + segment_force.transpose()*segment_acceleration;
-                segment_sum += temp_segment_energy(0);
-        }
-
+    }
+    //space in code!!!!!!!!!!!
     return joint_sum + segment_sum;
 }
 
 // Evaluate motion quantities required for calculation of final acceleration energy
-void evaluate_motion(ChainIdSolver_Vereshchagin solver, Jacobian alpha, JntArray betha, double ff_torques[], double increment){
+void evaluate_motion(Solver_Vereshchagin solver, Jacobian alpha, JntArray betha, double ff_torques[], double increment){
     printf("               s1_acc                                  s1_acc                                   j0_acc            j1_acc           j0_Tau_ff         j1_Tau_ff \n");
 
     double max_Gauss = 0;
+
+    //use vector....this does not givee size dude!!!!!!!
     double input_torques[sizeof(ff_torques)];
 
     for (double i = ff_torques[0]; i <= 10*increment; i=i+increment)
@@ -205,17 +188,6 @@ void evaluate_motion(ChainIdSolver_Vereshchagin solver, Jacobian alpha, JntArray
                 solver.getLinkAcceleration(sum_xDotdot);
                 solver.getLinkAcceleration(sum_H);
                 solver.getBiasForce(sum_U);
-                // std::cout << "Inertia" << '\n';
-                // std::cout << sum_H[0].I << '\n';
-                // for(double k = 0; k < chaindyn.getNrOfSegments(); k++){
-                //     std::cout << "acceleration!" << '\n';
-                //     std::cout <<  sum_xDotdot[k].vel<< "        "<<'\n';
-                //     std::cout << "Inertia " << '\n';
-                //     std::cout <<  sum_H[k].I<< "        "<<'\n';
-                //     std::cout << "Bias force " << '\n';
-                //     std::cout <<  sum_U[k].force<< "        "<<'\n';
-                //     std::cout << " " << '\n';
-                // }
              }
 
              else{
@@ -286,7 +258,7 @@ void VereshchaginTest(double ff_torques[], double torgue_increment, bool simulat
     //-------------------------------------------------------------------------------------//
     int numberOfConstraints = 1;
 
-    ChainIdSolver_Vereshchagin constraintSolver(chaindyn, twist1, numberOfConstraints);
+    Solver_Vereshchagin constraintSolver(chaindyn, twist1, numberOfConstraints);
 
     for (int i = 0; i < k; i++)
     {
