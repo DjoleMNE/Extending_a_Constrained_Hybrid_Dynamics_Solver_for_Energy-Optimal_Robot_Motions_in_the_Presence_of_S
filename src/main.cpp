@@ -114,7 +114,7 @@ void printlayouts(){
 
 //Simulate motion of the arm to get joint positon, velosity and accelerations values
 void simulate_motion(Solver_Vereshchagin solver, Jacobian alpha, JntArray betha){
-    myfile.open ("/home/djole/Downloads/Master/R_&_D/KDL_GIT/Testing_repo/src/joint_poses.txt");
+    myfile.open ("/home/djole/Downloads/Master/R_&_D/KDL_GIT/Testing_repo/src/Simulation/joint_poses.txt");
     simulationTime = _simulation_param*taskTimeConstant;
 
     printf("time              j0_pose       j1_pose        j0_rate       j1_rate         j0_acc        j1_acc       j0_constraintTau         j1_constraintTau \n");
@@ -174,6 +174,12 @@ void evaluate_motion(Solver_Vereshchagin solver, Jacobian alpha, JntArray betha,
 
     //use vector....this does not givee size dude!!!!!!!
     double input_torques[sizeof(ff_torques)];
+
+    //make it for N number of joints!!!
+    // double resolution = 2 * f_torques[0] / numb_steps;
+    // for (int i = 0; i < ...; i++) {
+    //     double current_torque = -f_torques[0] + i * resolution;
+    // }
 
     for (double i = ff_torques[0]; i <= 10*increment; i=i+increment)
     {

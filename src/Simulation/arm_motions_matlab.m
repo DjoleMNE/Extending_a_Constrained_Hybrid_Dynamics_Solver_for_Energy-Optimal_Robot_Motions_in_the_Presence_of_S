@@ -18,13 +18,10 @@ counter = size(jointPoses,1);
 cla
 
 % size(jointPoses)
-for i = 1:counter 
-    
+for i = 1:counter
+
     Theta1 = jointPoses(i,1)+3*pi/2;
     Theta2 = jointPoses(i,2);
-
-    xo = [L1*cos(Theta1)+L2*cos(Theta1+Theta2);
-          L2*sin(Theta1)+L2*sin(Theta1+Theta2)];
 
     %Calculate the location of the middle two joints
 
@@ -38,7 +35,7 @@ for i = 1:counter
     line([0,pointl1(1)],[0,pointl1(2,1)])
     hold on
     line([pointl1(1),pointl2(1)],[pointl1(2,1),pointl2(2,1)])
-    plot(xo(1),xo(2),'O')
+    plot(pointl2 (1),pointl2 (2),'O')
     pause(.1)
 
 end
