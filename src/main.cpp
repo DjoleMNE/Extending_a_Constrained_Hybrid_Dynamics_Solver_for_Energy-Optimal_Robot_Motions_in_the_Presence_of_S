@@ -16,6 +16,9 @@ KDL::Chain chaindyn;
 //File for storing joint values from arm simulation
 ofstream myfile;
 
+//file for storing torque values and respective acc energy imposed by them
+ofstream plot_file;
+
 //Boolean for choice of simulation
 bool simulation_on;
 
@@ -169,11 +172,12 @@ double calculate_Gauss(double ff_torques[]){
 // Evaluate motion quantities required for calculation of final acceleration energy
 void evaluate_motion(Solver_Vereshchagin solver, Jacobian alpha, JntArray betha, double ff_torques[], double increment){
     printf("               s1_acc                                  s1_acc                                   j0_acc            j1_acc           j0_Tau_ff         j1_Tau_ff \n");
+    plot_file.open ("/home/djole/Downloads/Master/R_&_D/KDL_GIT/Testing_repo/src/Simulation/plot_data.txt");
 
     double max_Gauss = 0;
 
     //use vector....this does not givee size dude!!!!!!!
-    double input_torques[sizeof(ff_torques)];
+    double input_torques[2];
 
     //make it for N number of joints!!!
     // double resolution = 2 * f_torques[0] / numb_steps;
@@ -181,9 +185,9 @@ void evaluate_motion(Solver_Vereshchagin solver, Jacobian alpha, JntArray betha,
     //     double current_torque = -f_torques[0] + i * resolution;
     // }
 
-    for (double i = ff_torques[0]; i <= 10*increment; i=i+increment)
+    for (double i = ff_torques[0]; i <= ff_torques[1]; i=i+increment)
     {
-        for (double j = ff_torques[1]; j <=10*increment; j=j+increment)
+        for (double j = ff_torques[0]; j <= ff_torques[1]; j=j+increment)
         {
             jointTorques[0](0) = i;
             jointTorques[0](1) = j;
@@ -201,6 +205,10 @@ void evaluate_motion(Solver_Vereshchagin solver, Jacobian alpha, JntArray betha,
              }
 
              double acc_energy = calculate_Gauss(ff_torques);
+
+             //write data in the file
+             plot_file <<i<<" "<<j<<" "<<acc_energy<<"\n";
+
              if (acc_energy > max_Gauss){
                  max_Gauss = acc_energy;
                  input_torques[0] = i;
@@ -209,6 +217,8 @@ void evaluate_motion(Solver_Vereshchagin solver, Jacobian alpha, JntArray betha,
 
         }
     }
+    // plot_file <<ff_torques[0]<<" "<<ff_torques[0]<<" "<<max_Gauss<<"\n";
+    plot_file.close();
     std::cout << "Max Gauss" << '\n';
     std::cout << max_Gauss << '\n';
     std::cout << "Torques:" << '\n';
@@ -307,7 +317,7 @@ void VereshchaginTest(double ff_torques[], double torgue_increment, bool simulat
 int main(int argc, char* argv[])
 {
     if (argc < 6) {
-        std::cerr << "Usage: " << argv[0] << " Torgue_1 Torque_2 Torgue_increment simulation_on simulation_parameter" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " lower_limit_Torgue upper_limit_Torque Torgue_increment simulation_on simulation_parameter" << std::endl;
         return 1;
     }
 
