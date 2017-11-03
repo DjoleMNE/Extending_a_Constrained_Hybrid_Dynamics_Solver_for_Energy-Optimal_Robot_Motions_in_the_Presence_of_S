@@ -41,7 +41,6 @@ class Solver_Vereshchagin : KDL::SolverI
 {
     typedef std::vector<Twist> Twists;
     typedef std::vector<ArticulatedBodyInertia> Inertias;
-    typedef std::vector<Wrench> Forces;
     typedef std::vector<Frame> Frames;
     typedef Eigen::Matrix<double, 6, 1 > Vector6d;
     typedef Eigen::Matrix<double, 6, 6 > Matrix6d;
@@ -74,35 +73,11 @@ public:
      * @return error/success code
      */
     int CartToJnt(const JntArray &q, const JntArray &q_dot, JntArray &q_dotdot, const Jacobian& alfa, const JntArray& beta, const Wrenches& f_ext, JntArray &torques);
-    // std::vector<Twist> getLinkAcceleration();
-    void getLinkAcceleration(Twists& sum_xDotdot_local);
-    void getLinkAcceleration(Inertias& sum_H_local);
-    void getBiasForce(Wrenches& sum_U_local);
+    void get_link_acceleration(Twists& xDotdot);
+    void get_link_inertias(Inertias &h);
+    void get_bias_force(Wrenches &u);
 
-    /*
-    //Returns cartesian positions of links in base coordinates
-    void getLinkCartesianPose(Frames& x_base);
-    //Returns cartesian velocities of links in base coordinates
-    void getLinkCartesianVelocity(Twists& xDot_base);
-    //Returns cartesian acceleration of links in base coordinates
-    void getLinkCartesianAcceleration(Twists& xDotDot_base);
-    //Returns cartesian postions of links in link tip coordinates
-    void getLinkPose(Frames& x_local);
-    //Returns cartesian velocities of links in link tip coordinates
-    void getLinkVelocity(Twists& xDot_local);
-    //Returns cartesian acceleration of links in link tip coordinates
-    void getLinkAcceleration(Twists& xDotdot_local);
-    //Acceleration energy due to unit constraint forces at the end-effector
-    void getLinkUnitForceAccelerationEnergy(Eigen::MatrixXd& M);
-    //Acceleration energy due to arm configuration: bias force plus input joint torques
-    void getLinkBiasForceAcceleratoinEnergy(Eigen::VectorXd& G);
 
-    void getLinkUnitForceMatrix(Matrix6Xd& E_tilde);
-
-    void getLinkBiasForceMatrix(Wrenches& R_tilde);
-
-    void getJointBiasAcceleration(JntArray &bias_q_dotdot);
-    */
 private:
     /**
      *  This method calculates all cartesian space poses, twists, bias accelerations.
@@ -131,9 +106,6 @@ private:
     unsigned int ns;
     unsigned int nc;
     Twist acc_root;
-    Twists sum_xDotdot;
-    Inertias sum_H;
-    Forces sum_U;
     Jacobian alfa_N;
     Jacobian alfa_N2;
     Eigen::MatrixXd M_0_inverse;

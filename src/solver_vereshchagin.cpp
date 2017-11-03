@@ -98,8 +98,6 @@ void Solver_Vereshchagin::initial_upwards_sweep(const JntArray &q, const JntArra
 {
     //if (q.rows() != nj || qdot.rows() != nj || qdotdot.rows() != nj || f_ext.size() != ns)
     //        return -1;
-    sum_H.clear();
-    sum_U.clear();
 
     unsigned int j = 0;
     F_total = Frame::Identity();
@@ -147,15 +145,11 @@ void Solver_Vereshchagin::initial_upwards_sweep(const JntArray &q, const JntArra
         //The rigid body inertia of the segment, expressed in the segments reference frame (tip)
         //It is variable type of ArticulatedBodyInertia!!!
         s.H = segment.getInertia();
-        //iterate over results object and extract all data
-        sum_H.push_back(s.H);
 
         //wrench of the rigid body bias forces and the external forces on the segment (in body coordinates, tip)
         //external forces are taken into account through s.U.
         Wrench FextLocal = F_total.M.Inverse() * f_ext[i];
         s.U = s.v * (s.H * s.v) - FextLocal; //f_ext[i];
-
-        sum_U.push_back(s.U);
 
         if (segment.getJoint().getType() != Joint::None)
             j++;
@@ -299,7 +293,6 @@ void Solver_Vereshchagin::constraint_calculation(const JntArray& beta)
     //results[0].M-=MatrixXd::Identity(nc,nc);
     //std::cout<<"augmented M0: "<<results[0].M<<std::endl;
 
-
     //ToDo: Need to check ill conditions
 
     //M_0_inverse=results[0].M.inverse();
@@ -334,7 +327,6 @@ void Solver_Vereshchagin::constraint_calculation(const JntArray& beta)
 void Solver_Vereshchagin::final_upwards_sweep(JntArray &q_dotdot, JntArray &torques)
 {
     unsigned int j = 0;
-    sum_xDotdot.clear();
 
     for (unsigned int i = 1; i <= ns; i++)
     {
@@ -369,7 +361,9 @@ void Solver_Vereshchagin::final_upwards_sweep(JntArray &q_dotdot, JntArray &torq
         //The result should be the torque at this joint.
 
         //final control value for torque???...nope!!!! only constraints!!!
-        torques(j) = constraint_torque;
+        //Line bellow commented by Djordje Vukcevic....to avoid overwriting ff_torques
+        // torques(j) = constraint_torque;
+
         //s.constAccComp = torques(j) / s.D;
         s.constAccComp = constraint_torque / s.D;
         s.nullspaceAccComp = s.u / s.D;
@@ -382,226 +376,44 @@ void Solver_Vereshchagin::final_upwards_sweep(JntArray &q_dotdot, JntArray &torq
         //s.acc is specified under segment info in h file!!
         s.acc = s.F.Inverse(a_p + s.Z * q_dotdot(j) + s.C);//returns acceleration in link distal tip coordinates. For use needs to be transformed
 
-        sum_xDotdot.push_back(s.acc);
-
         if (chain.getSegment(i - 1).getJoint().getType() != Joint::None)
             j++;
     }
 }
 
 //Returns cartesian acceleration of links in link tip coordinates
-void Solver_Vereshchagin::getLinkAcceleration(Twists& sum_xDotdot_local)
+void Solver_Vereshchagin::get_link_acceleration(Twists& xDotdot)
 {
-    sum_xDotdot_local = sum_xDotdot;
+    assert(xDotdot.size() == ns);
+
+    //Ask Sven how size does not increse...vector is not reseted in each iteration
+    for (int i = 0; i < ns; i++) {
+        xDotdot[i] = results[i].acc;
+    }
 }
-
-// std::vector<Twist> Solver_Vereshchagin::getLinkAcceleration()
-// {
-//     return xDotdot;
-//
-// }
-
-// void Solver_Vereshchagin::getLinkCartesianAcceleration(Twists& xDotDot_base)
-// {
-//
-//     for (int i = 0; i < ns; i++)
-//     {
-//         xDotDot_base[i] = results[i + 1].F_base.M * results[i + 1].acc;
-//         //std::cout << "XDotDot_base[i] " << xDotDot_base[i] << std::endl;
-//     }
-//     return;
-// }
 
 //this method should retur array of H's
 //H -> rigid body inertia of the segment, expressed in the segments reference frame (tip)
 //variable Type is ArticulatedBodyInertia!
-void Solver_Vereshchagin::getLinkAcceleration(Inertias& sum_H_local)
+void Solver_Vereshchagin::get_link_inertias(Inertias &h)
 {
-    sum_H_local = sum_H;
-}
+    assert(h.size() == ns);
 
-//U ...bias or external forces or both?????
-void Solver_Vereshchagin::getBiasForce(Wrenches& sum_U_local)
-{
-    sum_U_local = sum_U;
-}
-/*
-//Returns cartesian positions of links in base coordinates
-void getLinkCartesianPose(Frames& x_base);
-
-//Returns cartesian velocities of links in base coordinates
-void getLinkCartesianVelocity(Twists& xDot_base);
-
-//Returns cartesian acceleration of links in base coordinates
-void getLinkCartesianAcceleration(Twists& xDotDot_base);
-
-//Returns cartesian postions of links in link tip coordinates
-void getLinkPose(Frames& x_local);
-
-//Returns cartesian velocities of links in link tip coordinates
-void getLinkVelocity(Twists& xDot_local);
-
-//Returns cartesian acceleration of links in link tip coordinates....we need this for X_dot_dot??
-void getLinkAcceleration(Twists& xDotdot_local);
-
-//Acceleration energy due to unit constraint forces at the end-effector
-void getLinkUnitForceAccelerationEnergy(Eigen::MatrixXd& M);
-
-//Acceleration energy due to arm configuration: bias force plus input joint torques
-void getLinkBiasForceAcceleratoinEnergy(Eigen::VectorXd& G);
-
-void getLinkUnitForceMatrix(Matrix6Xd& E_tilde);
-
-void getLinkBiasForceMatrix(Wrenches& R_tilde);
-
-void getJointBiasAcceleration(JntArray &bias_q_dotdot);
-*/
-
-/*
-void Solver_Vereshchagin::getLinkCartesianPose(Frames& x_base)
-{
-    for (int i = 0; i < ns; i++)
-    {
-        x_base[i] = results[i + 1].F_base;
+    for (int i = 0; i < ns; i++) {
+        h[i] = results[i].H;
     }
-    return;
 }
 
-void Solver_Vereshchagin::getLinkCartesianVelocity(Twists& xDot_base)
+
+//U ...bias or external forces or both????? In Featherstone book is both!
+void Solver_Vereshchagin::get_bias_force(Wrenches &u)
 {
-
-    for (int i = 0; i < ns; i++)
-    {
-        xDot_base[i] = results[i + 1].F_base.M * results[i + 1].v;
+    assert(u.size() == ns);
+    // u.clear();
+    for (int i = 0; i < ns; i++) {
+        u[i] = results[i].U;
     }
-    return;
-}
-
-void Solver_Vereshchagin::getLinkCartesianAcceleration(Twists& xDotDot_base)
-{
-
-    for (int i = 0; i < ns; i++)
-    {
-        xDotDot_base[i] = results[i + 1].F_base.M * results[i + 1].acc;
-        //std::cout << "XDotDot_base[i] " << xDotDot_base[i] << std::endl;
-    }
-    return;
-}
-
-void Solver_Vereshchagin::getLinkPose(Frames& x_local)
-{
-    for (int i = 0; i < ns; i++)
-    {
-        x_local[i] = results[i + 1].F;
-    }
-    return;
-}
-
-void Solver_Vereshchagin::getLinkVelocity(Twists& xDot_local)
-{
-    for (int i = 0; i < ns; i++)
-    {
-        xDot_local[i] = results[i + 1].v;
-    }
-    return;
 
 }
-
-void Solver_Vereshchagin::getLinkAcceleration(Twists& xDotdot_local)
-{
-     for (int i = 0; i < ns; i++)
-    {
-        xDotdot_local[i] = results[i + 1].acc;
-    }
-    return;
-
-}
-
-void Solver_Vereshchagin::getJointBiasAcceleration(JntArray& bias_q_dotdot)
-{
-    for (int i = 0; i < ns; i++)
-    {
-        //this is only force
-        double tmp = results[i + 1].totalBias;
-        //this is accelleration
-        bias_q_dotdot(i) = tmp / results[i + 1].D;
-
-        //s.totalBias = - dot(s.Z, s.R + s.PC);
-        //std::cout << "totalBiasAccComponent" << i << ": " << bias_q_dotdot(i) << std::endl;
-        //bias_q_dotdot(i) = s.totalBias/s.D
-
-    }
-    return;
-
-}
-
-void Solver_Vereshchagin::getJointConstraintAcceleration(JntArray& constraint_q_dotdot)
-{
-    for (int i = 0; i < ns; i++)
-    {
-        constraint_q_dotdot(i) = results[i + 1].constAccComp;
-        //double tmp = results[i + 1].u;
-        //s.u = torques(j) + s.totalBias;
-        // std::cout << "s.constraintAccComp" << i << ": " << results[i+1].constAccComp << std::endl;
-        //nullspace_q_dotdot(i) = s.u/s.D
-
-    }
-    return;
-
-
-}
-
-//Check the name it does not seem to be appropriate
-
-void Solver_Vereshchagin::getJointNullSpaceAcceleration(JntArray& nullspace_q_dotdot)
-{
-    for (int i = 0; i < ns; i++)
-    {
-        nullspace_q_dotdot(i) = results[i + 1].nullspaceAccComp;
-        //double tmp = results[i + 1].u;
-        //s.u = torques(j) + s.totalBias;
-        //std::cout << "s.nullSpaceAccComp" << i << ": " << results[i+1].nullspaceAccComp << std::endl;
-        //nullspace_q_dotdot(i) = s.u/s.D
-
-    }
-    return;
-
-
-}
-
-//This is not only a bias force energy but also includes generalized forces
-//change type of parameter G
-//this method should retur array of G's
-
-void Solver_Vereshchagin::getLinkBiasForceAcceleratoinEnergy(Eigen::VectorXd& G)
-{
-    for (int i = 0; i < ns; i++)
-    {
-        G = results[i + 1].G;
-        //double tmp = results[i + 1].u;
-        //s.u = torques(j) + s.totalBias;
-        //std::cout << "s.G " << i << ":  " << results[i+1].G << std::endl;
-        //nullspace_q_dotdot(i) = s.u/s.D
-
-    }
-    return;
-
-}
-
-//this method should retur array of R's
-
-void Solver_Vereshchagin::getLinkBiasForceMatrix(Wrenches& R_tilde)
-{
-    for (int i = 0; i < ns; i++)
-    {
-        R_tilde[i] = results[i + 1].R_tilde;
-        //Azamat: bias force as in Featherstone (7.20)
-        //s.R_tilde = s.U + child.R + child.PC + child.PZ / child.D * child.u;
-        std::cout << "s.R_tilde " << i << ":  " << results[i + 1].R_tilde << std::endl;
-    }
-    return;
-}
-
-*/
 
 }//namespace
