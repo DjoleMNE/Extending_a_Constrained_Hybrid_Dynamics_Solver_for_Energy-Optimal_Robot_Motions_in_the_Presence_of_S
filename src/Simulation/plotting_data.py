@@ -44,4 +44,5 @@ class Arrow3D(FancyArrowPatch):
 
 a = Arrow3D([input_data[-1,0], input_data[-1,0]], [input_data[-1,1], input_data[-1,1]], [input_data[-1,2], input_data[-1,2]+input_data[-1,2]/10], mutation_scale=20,  lw=1, arrowstyle="-|>", color="k")
 ax.add_artist(a)
+plt.savefig('acc_energy_surface.pdf')
 plt.show()
