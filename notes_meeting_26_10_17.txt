@@ -16,25 +16,38 @@ constraints)" [Azamat]
 void fun(double ff_torques[]) => void fun(double *ff_torques)
 
 Default solver (KDL::Vereshchagin)
-
 Kinematic chain
-
-friction_enabled_vereshchagin
-    Compute acc. energy
-    Find optimal mu/friction torques
-
+Compute acc. energy
+Find optimal mu/friction torques
 Simulation
 -> Default solver
 -> Friction-extended solver
 
 
+void fun(double ff_torques[]) => void fun(double *ff_torques)
+
+
+class KDL::Chain {
+    kin
+    dyn
+    break_away_torque
+};
+
+
+void create_my_kinematic_chain(KDL::Chain &chain, std::vector<double>
+&break_away_torques)
+{
+    return ...
+};
+
 class friction_enabled_vereshchagin
 {
-    friction_enabled_vereshchagin(KDL::Chain chain, const std::vector<double> &friction_torque) {
+    friction_enabled_vereshchagin(KDL::Chain chain, std::vector<double>
+break_away_torques) {
         friction_torque.resize(chain.getNrJoints());
     }
 
-    void compute_acc_energy() {
+    void compute_acc_energy(const std::vector<double> &friction_torque) {
         friction_torque.size()
     }
 
@@ -42,7 +55,9 @@ class friction_enabled_vereshchagin
         moving_joints = f(qd);
         loop {
             tau_modified = tau + friction_torque;
-            solver.CartToJnt(q, qd, qdd, alpha, beta, extForces, tau_modified);
+            solver.CartToJnt(q, qd, qdd, alpha, beta, extForces,
+tau_modified);
+            acc_energy = compute_acc_energy(friction_torque);
         }
     }
 };
@@ -68,12 +83,24 @@ class simulation
 
 int main()
 {
-
     KDL::Chain a = create_my_kinematic_chain();
-    friction_enabled_vereshchagin solver(a, break_away_torques);
+    friction_enabled_vereshchagin solver(a);
     simulation s(a, solver);
 
     for i in 1:100:
         s.step()
         s.print_current_state()
 }
+
+
+solver_vereshchagin::getU(std::vector<double> &u)
+{
+    assert(u.size() == number_of_segments);
+    for (int i = 0; i < number_of_segments; i++) {
+        u[i] = results[i].U;
+    }
+}
+
+
+Wrench f = sum_H[i] * segment_acceleration;
+double e = dot(segment_acceleration, f);
