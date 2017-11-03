@@ -362,7 +362,7 @@ void Solver_Vereshchagin::final_upwards_sweep(JntArray &q_dotdot, JntArray &torq
         //The result should be the torque at this joint.
 
 
-
+        //TODO
         //Maybe only valid for simulation....????
         //Should the constaint torque become feedforward torque in next iteration???
         //Does  that have phisical meaning >>????

@@ -9,6 +9,7 @@
 #include <time.h>
 #include <cmath>
 #include <boost/assign/list_of.hpp>
+#include <stdlib.h>     /* abs */
 
 class Initialization {
 
@@ -28,9 +29,9 @@ public:
     Initialization(){
 
     }
-
-    Initialization(double _joint_inertia){
-        joint_inertia = _joint_inertia;
+    Initialization(KDL::Chain chaindyn, double joint_inertia){
+        this -> chaindyn = chaindyn;
+        this -> joint_inertia = joint_inertia;
     }
 
     void initialize_arm_configuration(){
@@ -161,8 +162,6 @@ public:
 
     void cart_to_jnt() {
         plot_file.open ("/home/djole/Downloads/Master/R_&_D/KDL_GIT/Testing_repo/src/Simulation/plot_data.txt");
-        //TODO This should be choosed from input j-acc??
-        // non_moving_joints = f(q_dot);
 
         //Define resolution(step value) for each joint
         int temp_numb_joints = numb_joints;
@@ -218,6 +217,22 @@ private:
         return joint_sum + segment_sum;
     }
 
+    void select_non_moving_joints(KDL::JntArray &temp_friction_torques){
+
+        for (int i = 0; i < numb_joints; i++) {
+            //TODO check for the right 0 treshold!!!!! Best ask Sven for float inacuracy
+            //TODO test functioon by calling it with simulation
+            //there is no sense calling it witout simulation
+            //But it seams that works
+            if (abs(init_params.jointAccelerations[0](i)) > 0.01){
+                temp_friction_torques(i) = 0;
+            }
+            else {
+                std::cout <<"Not moving!!  "<< i << " " <<temp_friction_torques(i) << '\n';
+            }
+        }
+    }
+
     void iterate_over_torques(const std::vector<double> resolution, int joint, const std::vector<int> steps_set, std::vector<double> resulting_set){
 
         if (joint >= numb_joints) {
@@ -229,9 +244,14 @@ private:
                 temp_friction_torques[0](j) = resulting_set[j];
             }
 
-            KDL::Add(*init_params.joint_ff_torques, *temp_friction_torques, *new_ff_torques);
             //TODO
-            //Check if acc is changed/overwritten after each call of CartToJnt!!! Yes it is....fix this!!!!
+            //this is only relevant for Simulation?? BEcause there we get them as current
+            // select_non_moving_joints(*temp_friction_torques);
+
+            KDL::Add(*init_params.joint_ff_torques, *temp_friction_torques, *new_ff_torques);
+
+            //TODO
+            //Check if acc is changed/overwritten after each call of CartToJnt!!! Yes it is!!!!
             //Even it is not used further on in computs. inside library!!
             //It is only been rewritten by actual and those accual are used for compuation later on...in solver itself and for simulation
             //This overwriting is ok for simulation !!!
@@ -320,6 +340,7 @@ public:
         jointRates = init_params.jointRates;
         jointAccelerations = init_params.jointAccelerations;
     }
+
     //TODO make printing and integrate functions generic for N number of joints!!!!
     void print_current_state(double current_time)
     {
@@ -329,6 +350,7 @@ public:
     }
 
     KDL::JntArray step() {
+
         int return_solver = original_solver -> CartToJnt(jointPoses[0], jointRates[0], jointAccelerations[0], *init_params.alpha, *init_params.beta, init_params.externalNetForce, *init_params.joint_ff_torques);
 
         if (return_solver == 0){
@@ -356,47 +378,60 @@ private:
 
 int main(int argc, char* argv[])
 {
-    //TODO Try to make it iteractive....user to select given options
+    //TODO Try to make it iteractive....user to select given options..not like this
     if (argc < 6) {
-        std::cerr << "Usage: " << argv[0] << " lower_limit_Torgue upper_limit_Torque Torgue_increment simulation_on simulation_parameter" << std::endl;
+        std::cerr << "Usage: " << argv[0] << " lower_limit_Torgue upper_limit_Torque number_of_samples simulation_on simulation_parameter" << std::endl;
         return 1;
     }
 
-    const double joint_inertia  = 0.1;
+    const double joint_inertia = 0.1;
+    KDL::Chain chaindyn_1;
     std::vector<double> friction_tau = boost::assign::list_of(atof(argv[1])) (atof(argv[2]));
 
-    Initialization init_params(joint_inertia);
-    init_params.create_kinematic_chain();
-    init_params.define_constraints();
-    init_params.initialize_arm_configuration();
+    Initialization init_params_1(chaindyn_1, joint_inertia);
+    init_params_1.create_kinematic_chain();
+    init_params_1.initialize_arm_configuration();
+    init_params_1.define_constraints();
 
-    Friction_enabled_vereshchagin friction_solver(init_params, friction_tau, 50);
+    Friction_enabled_vereshchagin friction_solver(init_params_1, friction_tau, atof(argv[3]));
     friction_solver.cart_to_jnt();
 
-    //Time required to complete the task
-    double simulation_time = 1;
-    double time_delta = 0.01;
-    //Here if we use the same instance of Initialization object
-    // Initial values first need to  be reseted
-    //Because they are rewritten by original solver in previous usage (optimization procedure in extended)
-    //Maybe there is another method...beter one than the followning
-    init_params.create_kinematic_chain();
-    init_params.define_constraints();
-    init_params.initialize_arm_configuration();
-
-    Simulation simulate(Simulation::original, init_params, time_delta);
-    KDL::JntArray joint_poses;
-
-    //File for storing joint values from arm simulation
-    std::ofstream my_file;
-    my_file.open ("/home/djole/Downloads/Master/R_&_D/KDL_GIT/Testing_repo/src/Simulation/joint_poses.txt");
-
-    //TODO make printing and integrate functions generic for N number of joints!!!!
-    for (double i = 0.0; i < simulation_time; i += time_delta) {
-        joint_poses = simulate.step();
-        my_file << joint_poses(0) <<" "<< joint_poses(1) <<"\n";
-        simulate.print_current_state(i);
+    //Boolean for choice of simulation
+    bool simulation_on;
+    std::stringstream ss(argv[4]);
+    if(!(ss >> std::boolalpha >> simulation_on)) {
+        std::cout << "Last argument must be boolean\n" << '\n';
     }
-    my_file.close();
+
+    if(simulation_on){
+        //Time required to complete the task
+        double simulation_time = atof(argv[5]);
+        double time_delta = 0.01;
+        //Here if we use the same instance of Initialization object
+        //Initial values first need to  be reseted
+        //Because they are rewritten by original solver in previous usage (optimization procedure in extended)
+        //Maybe there is another method...beter one than the followning
+        KDL::Chain chaindyn_2;
+        Initialization init_params_2(chaindyn_2, joint_inertia);
+        init_params_2.create_kinematic_chain();
+        init_params_2.define_constraints();
+        init_params_2.initialize_arm_configuration();
+
+        Simulation simulate(Simulation::original, init_params_2, time_delta);
+        KDL::JntArray joint_poses;
+
+        //File for storing joint values from arm simulation
+        std::ofstream my_file;
+        my_file.open ("/home/djole/Downloads/Master/R_&_D/KDL_GIT/Testing_repo/src/Simulation/joint_poses.txt");
+
+        //TODO make printing and integrate functions generic for N number of joints!!!!
+        for (double i = 0.0; i < simulation_time; i += time_delta) {
+            joint_poses = simulate.step();
+            my_file << joint_poses(0) <<" "<< joint_poses(1) <<"\n";
+            // simulate.print_current_state(i);
+        }
+        my_file.close();
+    }
+
 	return 0;
 }

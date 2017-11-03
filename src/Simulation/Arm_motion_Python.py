@@ -1,3 +1,5 @@
+# Code based on MRC assignment in SS2017, MAS-HBRS. Authors: Santosh Thoduka and Aleksandar Mitrevski
+# Modified and applied by Djordje Vukcevic
 import numpy as np
 import matplotlib.pyplot as plt
 import numpy.linalg as linalg
@@ -6,23 +8,17 @@ import sympy as sp
 from IPython.display import display
 from IPython.core.pylabtools import figsize, getfigs
 import IPython
-# import matplotlib.animation as animation
-# %matplotlib qt
-
-
-# Code based on MRC assignment in SS2017, MAS-HBRS. Authors: Santosh Thoduka and Aleksandar Mitrevski
-# Modified and applied by Djordje Vukcevic
 
 L1 = 0.4
 L2 = 0.4
 
 theta1, theta2 = sp.symbols('theta1, theta2')
 
-# Equations for end-effector position (eq1 = x, eq2 = y)
+# Equations for end-effector position 
 eq1 = L1*sp.cos(theta1) + L2*sp.cos(theta1 + theta2)
 eq2 = L1*sp.sin(theta1) + L2*sp.sin(theta1 + theta2)
 
-# Equations for link 1 tip position (eq3 = x, eq4 = y)
+# Equations for link 1 tip position
 eq3 = L1*sp.cos(theta1)
 eq4 = L1*sp.sin(theta1)
 
