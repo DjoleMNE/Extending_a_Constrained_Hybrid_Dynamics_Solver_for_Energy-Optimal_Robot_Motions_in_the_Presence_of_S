@@ -256,11 +256,15 @@ private:
             //Which means these acc are not accounted as input/desired values!!!!
             //It is only been rewritten by actual and those accual are used for compuation later on...in solver itself and for simulation
             //This overwriting is ok for simulation !!!
-            // maybe it is ok also for optimization procedure...because every new inputs does not influence calcs!! 
+            //Maybe this is due to forward dyn part in Hybrid algorithm...if we dont specify constraints...
+            //and only specify ff_torques...forward algo should give accual acc!!!!
+            // maybe it is ok also for optimization procedure...because every new inputs does not influence calcs!!
 
             //But the question is: is  the overwriting of input torques by constraint torques ok for simulation???
             //I thnk it is not ok because the constraint forces are always included/defined separately in each iteration
             //constraint forces impose separate work than ff_force...as stated in Phd and Book
+            //But the further question: is this due to inverse part of algor.....
+            //Further issue with only constraint torques as output defined more in solver code!!!
             //Here is ok because the torques values are reseted in each iteration~!
             //I think original KDL implementation of test simulation is not correct due to this!
             int return_solver = solver -> CartToJnt(*init_params.jointPoses, *init_params.jointRates, *init_params.jointAccelerations, *init_params.alpha, *init_params.beta, init_params.externalNetForce, *new_ff_torques);
