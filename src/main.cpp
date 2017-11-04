@@ -253,8 +253,10 @@ private:
             //TODO
             //Check if acc is changed/overwritten after each call of CartToJnt!!! Yes it is!!!!
             //Even it is not used further on in computs. inside library!!
+            //Which means these acc are not accounted as input/desired values!!!!
             //It is only been rewritten by actual and those accual are used for compuation later on...in solver itself and for simulation
             //This overwriting is ok for simulation !!!
+            // maybe it is ok also for optimization procedure...because every new inputs does not influence calcs!! 
 
             //But the question is: is  the overwriting of input torques by constraint torques ok for simulation???
             //I thnk it is not ok because the constraint forces are always included/defined separately in each iteration
