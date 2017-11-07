@@ -29,6 +29,7 @@ public:
     Initialization(){
 
     }
+
     Initialization(KDL::Chain chaindyn, double joint_inertia){
         this -> chaindyn = chaindyn;
         this -> joint_inertia = joint_inertia;
@@ -159,7 +160,7 @@ public:
         solver = new KDL::Solver_Vereshchagin(init_params.chaindyn, *init_params.root_acc, init_params.numberOfConstraints);
     }
 
-    void cart_to_jnt() {
+    void CartToJnt() {
         plot_file.open ("/home/djole/Downloads/Master/R_&_D/KDL_GIT/Testing_repo/src/Simulation/plot_data.txt");
 
         //Define resolution(step value) for each joint
@@ -182,6 +183,7 @@ public:
                 plot_file << max_acc_energy;
             }
         }
+
          plot_file.close();
          std::cout << "Max Gauss" << '\n';
          std::cout << max_acc_energy << '\n';
@@ -193,7 +195,7 @@ public:
 
 private:
 
-    void iterate_over_torques(const std::vector<double> resolution, int joint, const std::vector<int> steps_set, std::vector<double> resulting_set){
+    int iterate_over_torques(const std::vector<double> resolution, int joint, const std::vector<int> steps_set, std::vector<double> resulting_set){
 
         if (joint >= numb_joints) {
 
@@ -256,8 +258,6 @@ private:
                  max_acc_energy = acc_energy;
                  optimum_torques = resulting_set;
              }
-
-             return;
         }
 
         else {
@@ -267,6 +267,7 @@ private:
             }
         }
     }
+
     //Calculate acceleration energy based on Gauss least constraint principle
     double compute_acc_energy(KDL::JntArray ff_torques) {
         //Talk with Sven rearding jointArray implementation, accesing and initialization!!!
@@ -307,9 +308,39 @@ private:
     }
 };
 
+class Base_solver {
+public:
+    virtual int CartToJnt(const KDL::JntArray &jointPoses, const KDL::JntArray &jointRates, KDL::JntArray &jointAccelerations, const KDL::Jacobian& alpha, const KDL::JntArray& beta, const KDL::Wrenches& externalNetForce, KDL::JntArray &ff_torques) = 0;
+};
+
+class Base_original_solver : public Base_solver{
+    KDL::Solver_Vereshchagin* _solver;
+public:
+    Base_original_solver(KDL::Solver_Vereshchagin* solver){
+        _solver = solver;
+    }
+
+    int CartToJnt(const KDL::JntArray &jointPoses, const KDL::JntArray &jointRates, KDL::JntArray &jointAccelerations, const KDL::Jacobian& alpha, const KDL::JntArray& beta, const KDL::Wrenches& externalNetForce, KDL::JntArray &ff_torques){
+        return _solver -> CartToJnt(jointPoses, jointPoses, jointAccelerations, alpha, beta, externalNetForce, ff_torques);
+    }
+};
+
+class Base_friction_enabled_solver : public Base_solver {
+    Friction_enabled_vereshchagin* _solver;
+public:
+    Base_friction_enabled_solver(Friction_enabled_vereshchagin* solver) {
+        _solver = solver;
+    }
+
+    int CartToJnt(const KDL::JntArray &jointPoses, const KDL::JntArray &jointRates, KDL::JntArray &jointAccelerations, const KDL::Jacobian& alpha, const KDL::JntArray& beta, const KDL::Wrenches& externalNetForce, KDL::JntArray &ff_torques) {
+        _solver -> CartToJnt();
+        return 0;
+    }
+};
+
 class Simulation
 {
-    KDL::Solver_Vereshchagin* original_solver;
+    Base_solver* _solver;
     Initialization init_params;
     KDL::JntArray* jointPoses;
     KDL::JntArray* jointRates;
@@ -318,29 +349,11 @@ class Simulation
     double time_delta = 0.01;
 
 public:
-    //TODO Find the way to include options for chosing solver based on given enum
-    //Creating new base class is complicated becasuse the KDL: original solver is subclass of KDL::SolverI
-    enum Solver
-    {
-        original,
-        extended
-    } enumField;
 
-    Simulation(Solver solver, Initialization init_params, double time_delta) : enumField(solver) {
-        // switch (solver)
-        // {
-        //     case original:
-        //         std::cout << "original" << '\n';
-        //         break;
-        //     case extended:
-        //         std::cout << "extended" << '\n';
-        //         break;
-        // }
-
+    Simulation(Base_solver* solver, Initialization init_params, double time_delta) {
+        _solver = solver;
         this -> time_delta = time_delta;
         this -> init_params = init_params;
-        original_solver = new KDL::Solver_Vereshchagin(init_params.chaindyn, *init_params.root_acc, init_params.numberOfConstraints);
-
         jointPoses = init_params.jointPoses;
         jointRates = init_params.jointRates;
         jointAccelerations = init_params.jointAccelerations;
@@ -356,7 +369,7 @@ public:
 
     KDL::JntArray step() {
 
-        int return_solver = original_solver -> CartToJnt(jointPoses[0], jointRates[0], jointAccelerations[0], *init_params.alpha, *init_params.beta, init_params.externalNetForce, *init_params.joint_ff_torques);
+        int return_solver = _solver -> CartToJnt(jointPoses[0], jointRates[0], jointAccelerations[0], *init_params.alpha, *init_params.beta, init_params.externalNetForce, *init_params.joint_ff_torques);
 
         if (return_solver == 0){
             integrate();
@@ -399,7 +412,7 @@ int main(int argc, char* argv[])
     init_params_1.define_constraints();
 
     Friction_enabled_vereshchagin friction_solver(init_params_1, friction_tau, atof(argv[3]));
-    friction_solver.cart_to_jnt();
+    friction_solver.CartToJnt();
 
     //Boolean for choice of simulation
     bool simulation_on;
@@ -422,7 +435,10 @@ int main(int argc, char* argv[])
         init_params_2.define_constraints();
         init_params_2.initialize_arm_configuration();
 
-        Simulation simulate(Simulation::original, init_params_2, time_delta);
+        KDL::Solver_Vereshchagin default_solver(init_params_2.chaindyn, *init_params_2.root_acc, init_params_2.numberOfConstraints);
+        Base_original_solver solver(&default_solver);
+
+        Simulation simulate(&solver, init_params_2, time_delta);
         KDL::JntArray joint_poses;
 
         //File for storing joint values from arm simulation
