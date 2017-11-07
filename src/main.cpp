@@ -127,7 +127,6 @@ class Friction_enabled_vereshchagin
     KDL::Solver_Vereshchagin* solver;
     Initialization init_params;
     std::vector<KDL::Twist> sum_xDotdot;
-    //Inertia is Eigen matrix type!!!
     std::vector<KDL::ArticulatedBodyInertia> sum_H;
     KDL::Wrenches sum_U;
 
@@ -160,6 +159,7 @@ public:
     }
 
     void cart_to_jnt() {
+
         plot_file.open ("/home/djole/Downloads/Master/R_&_D/KDL_GIT/Testing_repo/src/Simulation/plot_data.txt");
 
         //Define resolution(step value) for each joint
@@ -174,7 +174,7 @@ public:
 
         iterate_over_torques(resolution, 0, steps_set, resulting_set);
 
-        for (int i = 0; i < numb_joints+1; i++) {
+        for (int i = 0; i < numb_joints + 1; i++) {
             if(i != numb_joints){
                 plot_file << optimum_torques[i] <<" ";
             }
@@ -220,14 +220,20 @@ private:
             // maybe it is ok also for optimization procedure...because every new inputs does not influence calcs!!
 
             //But the question is: is  the overwriting of input torques by constraint torques ok for simulation???
-            //I thnk it is not ok because the constraint forces are always included/defined separately in each iteration
+            //Because the constraint forces are always included/defined separately in each iteration
             //constraint forces impose separate work than ff_force...as stated in Phd and Book
             //But the further question: is this due to inverse part of algor.....
-            //Further issue with only constraint torques as output defined more in solver code!!!
-            //Here is the torques values are reseted in each iteration~!
-            //But after calling CartToJnt function, overwritten values are pased in calc_acc_energy
+
+            //After calling CartToJnt function, overwritten values are pased in calc_acc_energy
             //Which means Gauss is calculated with constarint torques!
             //Is original KDL implementation of test simulation  not correct due to this ?!
+            //Maybe Azamat placed constraint torques here because of simulation....
+            //to simulate how calculated constraint forces will influence motion...
+            //of course if they exist...here in simullation we neeed to produce them artificialy!!
+
+            //Further issues with only constraint torques as output are defined more in solver code!!!
+            //Here is the torques values are reseted in each iteration~!
+
             int return_solver = solver -> CartToJnt(*init_params.jointPoses, *init_params.jointRates, *init_params.jointAccelerations, *init_params.alpha, *init_params.beta, init_params.externalNetForce, *new_ff_torques);
 
             if (return_solver == 0){
@@ -267,6 +273,7 @@ private:
             }
         }
     }
+
     //Calculate acceleration energy based on Gauss least constraint principle
     double compute_acc_energy(KDL::JntArray ff_torques) {
         //Talk with Sven rearding jointArray implementation, accesing and initialization!!!
@@ -297,7 +304,7 @@ private:
             //TODO test functioon by calling it with simulation
             //there is no sense calling it witout simulation
             //But it seams that works
-            if (abs(init_params.jointAccelerations[0](i)) > 0.01){
+            if (abs(init_params.jointRates[0](i)) > 0.01){
                 temp_friction_torques(i) = 0;
             }
             else {
@@ -318,25 +325,8 @@ class Simulation
     double time_delta = 0.01;
 
 public:
-    //TODO Find the way to include options for chosing solver based on given enum
-    //Creating new base class is complicated becasuse the KDL: original solver is subclass of KDL::SolverI
-    enum Solver
-    {
-        original,
-        extended
-    } enumField;
 
-    Simulation(Solver solver, Initialization init_params, double time_delta) : enumField(solver) {
-        // switch (solver)
-        // {
-        //     case original:
-        //         std::cout << "original" << '\n';
-        //         break;
-        //     case extended:
-        //         std::cout << "extended" << '\n';
-        //         break;
-        // }
-
+    Simulation(Initialization init_params, double time_delta) {
         this -> time_delta = time_delta;
         this -> init_params = init_params;
         original_solver = new KDL::Solver_Vereshchagin(init_params.chaindyn, *init_params.root_acc, init_params.numberOfConstraints);
@@ -422,7 +412,7 @@ int main(int argc, char* argv[])
         init_params_2.define_constraints();
         init_params_2.initialize_arm_configuration();
 
-        Simulation simulate(Simulation::original, init_params_2, time_delta);
+        Simulation simulate(init_params_2, time_delta);
         KDL::JntArray joint_poses;
 
         //File for storing joint values from arm simulation
