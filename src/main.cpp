@@ -58,49 +58,49 @@ public:
     //Definition of constraints and external disturbances
     void define_constraints(){
 
-        numberOfConstraints = 2;
+        numberOfConstraints = 6;
 
-        KDL::Vector constrainXLinear(0.0, 0.0, 0.0);
+        KDL::Vector constrainXLinear(1.0, 0.0, 0.0);
         KDL::Vector constrainXAngular(0.0, 0.0, 0.0);
         KDL::Twist constraintForcesX(constrainXLinear, constrainXAngular);
 
         KDL::Vector constrainYLinear(0.0, 1.0, 0.0);
         KDL::Vector constrainYAngular(0.0, 0.0, 0.0);
         KDL::Twist constraintForcesY(constrainYLinear, constrainYAngular);
-        //
-        // KDL::Vector constrainZLinear(0.0, 10.0, 0.0);
-        // KDL::Vector constrainZAngular(0.0, 0.0, 0.0);
-        // KDL::Twist constraintForcesZ(constrainZLinear, constrainZAngular);
-        //
-        // KDL::Vector constrainXLinear2(0.0, 0.0, 0.0);
-        // KDL::Vector constrainXAngular2(1.0, 0.0, 0.0);
-        // KDL::Twist constraintForcesX2(constrainXLinear2, constrainXAngular2);
 
-        // KDL::Vector constrainYLinear2(0.0, 0.0, 0.0);
-        // KDL::Vector constrainYAngular2(0.0, 1.0, 0.0);
-        // KDL::Twist constraintForcesY2(constrainYLinear2, constrainYAngular2);
-        //
-        // KDL::Vector constrainZLinear2(0.0, 0.0, 0.0);
-        // KDL::Vector constrainZAngular2(0.0, 0.0, 1);
-        // KDL::Twist constraintForcesZ2(constrainZLinear2, constrainZAngular2);
+        KDL::Vector constrainZLinear(0.0, 0.0, 1.0);
+        KDL::Vector constrainZAngular(0.0, 0.0, 0.0);
+        KDL::Twist constraintForcesZ(constrainZLinear, constrainZAngular);
+
+        KDL::Vector constrainXLinear2(0.0, 0.0, 0.0);
+        KDL::Vector constrainXAngular2(1.0, 0.0, 0.0);
+        KDL::Twist constraintForcesX2(constrainXLinear2, constrainXAngular2);
+
+        KDL::Vector constrainYLinear2(0.0, 0.0, 0.0);
+        KDL::Vector constrainYAngular2(0.0, 1.0, 0.0);
+        KDL::Twist constraintForcesY2(constrainYLinear2, constrainYAngular2);
+
+        KDL::Vector constrainZLinear2(0.0, 0.0, 0.0);
+        KDL::Vector constrainZAngular2(0.0, 0.0, 1.0);
+        KDL::Twist constraintForcesZ2(constrainZLinear2, constrainZAngular2);
 
         alpha = new KDL::Jacobian(numberOfConstraints);
         alpha -> setColumn(0, constraintForcesX);
         alpha -> setColumn(1, constraintForcesY);
-        // alpha -> setColumn(2, constraintForcesZ);
-        // alpha -> setColumn(2, constraintForcesX2);
-        // alpha -> setColumn(2, constraintForcesY2);
-        // alpha -> setColumn(2, constraintForcesZ2);
+        alpha -> setColumn(2, constraintForcesZ);
+        alpha -> setColumn(3, constraintForcesX2);
+        alpha -> setColumn(4, constraintForcesY2);
+        alpha -> setColumn(5, constraintForcesZ2);
 
         //Acceleration energy at  the end-effector
         beta = new KDL::JntArray(numberOfConstraints); //set to zero.
         //the task is to keep ee_acc to 0 in specified direction by constrain<>Angular/constrain<>Linear!
         beta[0](0) = 0.0;
-        beta[0](1) = 0.0;
-        // beta[0](2) = 0.0;
-        // beta[0](3) = 0.0;
-        // beta[0](4) = 0.0;
-        // beta[0](5) = 0.0;
+        beta[0](1) = 3.0;
+        beta[0](2) = 0.0;
+        beta[0](3) = 0.0;
+        beta[0](4) = 0.0;
+        beta[0](5) = 0.0;
 
         //arm root acceleration
         KDL::Vector linearAcc(0.0, -9.81, 0.0); //gravitational acceleration along Y
