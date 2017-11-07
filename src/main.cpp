@@ -74,8 +74,7 @@ public:
         beta[0](0) = 0.0;
 
         //arm root acceleration
-        //Why not -9.81???????? is y-axis reversed  ????
-        KDL::Vector linearAcc(0.0, 9.81, 0.0); //gravitational acceleration along Y
+        KDL::Vector linearAcc(0.0, -9.81, 0.0); //gravitational acceleration along Y
         KDL::Vector angularAcc(0.0, 0.0, 0.0);
         root_acc = new KDL::Twist(linearAcc, angularAcc);
 
@@ -100,8 +99,8 @@ public:
 
         // RPY(roll,pitch,yaw) Rotation built from Roll-Pitch-Yaw angles
         KDL::Frame refFrame(KDL::Rotation::RPY(0.0, 0.0, 0.0), KDL::Vector(0.0, 0.0, 0.0));
-        KDL::Frame frame1(KDL::Rotation::RPY(0.0, 0.0, 0.0), KDL::Vector(0.0, -0.4, 0.0));
-        KDL::Frame frame2(KDL::Rotation::RPY(0.0, 0.0, 0.0), KDL::Vector(0.0, -0.4, 0.0));
+        KDL::Frame frame1(KDL::Rotation::RPY(0.0, 0.0, 0.0), KDL::Vector(0.0, 0.4, 0.0));
+        KDL::Frame frame2(KDL::Rotation::RPY(0.0, 0.0, 0.0), KDL::Vector(0.0, 0.4, 0.0));
 
         //Frames desctibe pose of the segment tip, wrt joint frame
         KDL::Segment segment1 = KDL::Segment(rotJoint0, frame1);
@@ -112,8 +111,8 @@ public:
 
         //spatial inertia
         // center of mass at the same position as tip  of segment???
-        KDL::RigidBodyInertia inerSegment1(0.3, KDL::Vector(0.0, -0.4, 0.0), rotInerSeg1);
-        KDL::RigidBodyInertia inerSegment2(0.3, KDL::Vector(0.0, -0.4, 0.0), rotInerSeg1);
+        KDL::RigidBodyInertia inerSegment1(0.3, KDL::Vector(0.0, 0.4, 0.0), rotInerSeg1);
+        KDL::RigidBodyInertia inerSegment2(0.3, KDL::Vector(0.0, 0.4, 0.0), rotInerSeg1);
         segment1.setInertia(inerSegment1);
         segment2.setInertia(inerSegment2);
 
@@ -194,45 +193,6 @@ public:
 
 private:
 
-    //Calculate acceleration energy based on Gauss least constraint principle
-    double compute_acc_energy(KDL::JntArray ff_torques) {
-        //Talk with Sven rearding jointArray implementation, accesing and initialization!!!
-        //Azamat wanted to work with row vectors?????
-        // std::cout << friction_torque[0]<< '\n';
-
-        double joint_sum = 0;
-        double segment_sum = 0;
-        double joint_inertia = init_params.joint_inertia;
-
-        //check if here should be ff_torques+friction_torque of  both!
-        //From the paper it seams that Q is ff_torque + friction_torque
-        for (int j = 0; j < numb_joints; j++)  {
-            joint_sum = joint_sum  + 0.5 * (joint_inertia * pow(init_params.jointAccelerations[0](j), 2)) - ff_torques(j) * init_params.jointAccelerations[0](j);
-        }
-
-        for (int i = 0; i < numb_segments; i++) {
-            segment_sum += 0.5 * (dot(sum_xDotdot[i], sum_H[i] * sum_xDotdot[i]) + dot(sum_U[i], sum_xDotdot[i]));
-        }
-
-        return joint_sum + segment_sum;
-    }
-
-    void select_non_moving_joints(KDL::JntArray &temp_friction_torques){
-
-        for (int i = 0; i < numb_joints; i++) {
-            //TODO check for the right 0 treshold!!!!! Best ask Sven for float inacuracy
-            //TODO test functioon by calling it with simulation
-            //there is no sense calling it witout simulation
-            //But it seams that works
-            if (abs(init_params.jointAccelerations[0](i)) > 0.01){
-                temp_friction_torques(i) = 0;
-            }
-            else {
-                std::cout <<"Not moving!!  "<< i << " " <<temp_friction_torques(i) << '\n';
-            }
-        }
-    }
-
     void iterate_over_torques(const std::vector<double> resolution, int joint, const std::vector<int> steps_set, std::vector<double> resulting_set){
 
         if (joint >= numb_joints) {
@@ -247,7 +207,6 @@ private:
             //TODO
             //this is only relevant for Simulation?? BEcause there we get them as current
             // select_non_moving_joints(*temp_friction_torques);
-
             KDL::Add(*init_params.joint_ff_torques, *temp_friction_torques, *new_ff_torques);
 
             //TODO
@@ -265,7 +224,9 @@ private:
             //constraint forces impose separate work than ff_force...as stated in Phd and Book
             //But the further question: is this due to inverse part of algor.....
             //Further issue with only constraint torques as output defined more in solver code!!!
-            //Here is ok because the torques values are reseted in each iteration~!
+            //Here is the torques values are reseted in each iteration~!
+            //But after calling CartToJnt functioon, overwritten values are pased in calc_acc_energy
+            //Which means Gauss is calculated with constarint torques!
             //I think original KDL implementation of test simulation is not correct due to this!
             int return_solver = solver -> CartToJnt(*init_params.jointPoses, *init_params.jointRates, *init_params.jointAccelerations, *init_params.alpha, *init_params.beta, init_params.externalNetForce, *new_ff_torques);
 
@@ -303,6 +264,44 @@ private:
             for (int i = 0; i < steps_set[joint]; i++){
                 resulting_set[joint] = -friction_torque[0](joint) +  (resolution[joint]*(i+1));
                 iterate_over_torques(resolution, joint + 1, steps_set, resulting_set);
+            }
+        }
+    }
+    //Calculate acceleration energy based on Gauss least constraint principle
+    double compute_acc_energy(KDL::JntArray ff_torques) {
+        //Talk with Sven rearding jointArray implementation, accesing and initialization!!!
+        //Azamat wanted to work with row vectors?????
+        // std::cout << friction_torque[0]<< '\n';
+
+        double joint_sum = 0;
+        double segment_sum = 0;
+        double joint_inertia = init_params.joint_inertia;
+
+        //check if here should be ff_torques+friction_torque of  both!
+        //From the paper it seams that Q is ff_torque + friction_torque
+        for (int j = 0; j < numb_joints; j++)  {
+            joint_sum = joint_sum  + 0.5 * (joint_inertia * pow(init_params.jointAccelerations[0](j), 2)) - ff_torques(j) * init_params.jointAccelerations[0](j);
+        }
+
+        for (int i = 0; i < numb_segments; i++) {
+            segment_sum += 0.5 * (dot(sum_xDotdot[i], sum_H[i] * sum_xDotdot[i]) + dot(sum_U[i], sum_xDotdot[i]));
+        }
+
+        return joint_sum + segment_sum;
+    }
+
+    void select_non_moving_joints(KDL::JntArray &temp_friction_torques){
+
+        for (int i = 0; i < numb_joints; i++) {
+            //TODO check for the right 0 treshold!!!!! Best ask Sven for float inacuracy
+            //TODO test functioon by calling it with simulation
+            //there is no sense calling it witout simulation
+            //But it seams that works
+            if (abs(init_params.jointAccelerations[0](i)) > 0.01){
+                temp_friction_torques(i) = 0;
+            }
+            else {
+                std::cout <<"Not moving!!  "<< i << " " <<temp_friction_torques(i) << '\n';
             }
         }
     }
