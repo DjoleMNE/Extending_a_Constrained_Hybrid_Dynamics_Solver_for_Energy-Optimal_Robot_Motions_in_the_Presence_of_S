@@ -23,7 +23,7 @@ public:
     KDL::JntArray beta;
     KDL::Jacobian alpha;
     KDL::Wrenches externalNetForce;
-    double joint_inertia = 0;
+    double joint_inertia;
     int numberOfConstraints = 0;
 
     Initialization(){
@@ -162,7 +162,7 @@ class Friction_enabled_vereshchagin
 
     //file for storing torque values and respective acc energy imposed by them
     std::ofstream plot_file;
-    int numb_joints = 0, numb_segments = 0, num_steps = 40;
+    int num_joint, num_segments, num_steps;
 
 public:
     KDL::JntArray friction_torque;
@@ -171,17 +171,17 @@ public:
 
     Friction_enabled_vereshchagin(Initialization parameters, std::vector<double> friction_tau, int steps): init_params(parameters), num_steps(steps), solver(init_params.chaindyn, init_params.root_acc, init_params.numberOfConstraints) {
 
-        numb_joints = init_params.chaindyn.getNrOfJoints();
-        numb_segments = init_params.chaindyn.getNrOfSegments();
+        num_joint = init_params.chaindyn.getNrOfJoints();
+        num_segments = init_params.chaindyn.getNrOfSegments();
 
         friction_torque = KDL::JntArray(friction_tau.size());
-        friction_torque.resize(numb_joints);
-        sum_xDotdot.resize(numb_segments + 1);
-        sum_H.resize(numb_segments + 1);
-        sum_U.resize(numb_segments + 1);
-        optimum_torques.resize(numb_joints);
+        friction_torque.resize(num_joint);
+        sum_xDotdot.resize(num_segments + 1);
+        sum_H.resize(num_segments + 1);
+        sum_U.resize(num_segments + 1);
+        optimum_torques.resize(num_joint);
 
-        for(int i = 0; i < numb_joints; i++){
+        for(int i = 0; i < num_joint; i++){
             friction_torque(i) = friction_tau[i];
         }
 
@@ -192,19 +192,18 @@ public:
         plot_file.open ("/home/djole/Downloads/Master/R_&_D/KDL_GIT/Testing_repo/src/Simulation/plot_data.txt");
 
         //Define resolution(step value) for each joint
-        int temp_numb_joints = numb_joints;
-        std::vector<int> steps_set(numb_joints, num_steps);
-        std::vector<double> resulting_set(numb_joints);
+        std::vector<int> steps_set(num_joint, num_steps);
+        std::vector<double> resulting_set(num_joint);
         std::vector<double> resolution;
 
-        for (int i = 0; i < numb_joints; i++){
+        for (int i = 0; i < num_joint; i++){
             resolution.push_back((2 * friction_torque(i)) / num_steps);
         }
 
         iterate_over_torques(resolution, 0, steps_set, resulting_set);
 
-        for (int i = 0; i < numb_joints + 1; i++) {
-            if(i != numb_joints){
+        for (int i = 0; i < num_joint + 1; i++) {
+            if(i != num_joint){
                 plot_file << optimum_torques[i] <<" ";
             }
             else{
@@ -224,12 +223,12 @@ private:
 
     void iterate_over_torques(const std::vector<double> resolution, int joint, const std::vector<int> steps_set, std::vector<double> resulting_set){
 
-        if (joint >= numb_joints) {
+        if (joint >= num_joint) {
 
-            KDL::JntArray new_ff_torques(numb_joints);
-            KDL::JntArray temp_friction_torques(numb_joints);
+            KDL::JntArray new_ff_torques(num_joint);
+            KDL::JntArray temp_friction_torques(num_joint);
 
-            for(int j = 0; j < numb_joints; j++){
+            for(int j = 0; j < num_joint; j++){
                 temp_friction_torques(j) = resulting_set[j];
             }
 
@@ -281,8 +280,8 @@ private:
              double acc_energy = compute_acc_energy(new_ff_torques);
 
              //write data in the file
-             for (int k = 0; k < numb_joints + 1; k++){
-                 if(k != numb_joints){
+             for (int k = 0; k < num_joint + 1; k++){
+                 if(k != num_joint){
                      plot_file << resulting_set[k] <<" ";
                  }
                  else{
@@ -318,11 +317,11 @@ private:
 
         //check if here should be ff_torques+friction_torque of both!
         //From the paper it seams that Q is ff_torque + friction_torque
-        for (int j = 0; j < numb_joints; j++) {
+        for (int j = 0; j < num_joint; j++) {
             joint_sum = joint_sum  + 0.5 * (joint_inertia * pow(init_params.jointAccelerations(j), 2)) - ff_torques(j) * init_params.jointAccelerations(j);
         }
 
-        for (int i = 0; i < numb_segments + 1; i++) {
+        for (int i = 0; i < num_segments + 1; i++) {
             segment_sum += 0.5 * (dot(sum_xDotdot[i], sum_H[i] * sum_xDotdot[i]) + dot(sum_U[i], sum_xDotdot[i]));
             std::cout << i <<"  ";
             std::cout << sum_xDotdot[i] << '\n';
@@ -334,7 +333,7 @@ private:
 
     void select_non_moving_joints(KDL::JntArray &temp_friction_torques){
 
-        for (int i = 0; i < numb_joints; i++) {
+        for (int i = 0; i < num_joint; i++) {
             //TODO check for the right 0 treshold!!!!! Best ask Sven for float inacuracy
             //TODO test functioon by calling it with simulation
             //there is no sense calling it witout simulation
@@ -357,7 +356,7 @@ class Simulation
     KDL::JntArray jointRates;
     KDL::JntArray jointAccelerations;
     KDL::JntArray friction_torque;
-    double time_delta = 0.01;
+    double time_delta;
 
 public:
 
