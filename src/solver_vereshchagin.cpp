@@ -397,10 +397,9 @@ void Solver_Vereshchagin::final_upwards_sweep(JntArray &q_dotdot, JntArray &torq
 //Returns cartesian acceleration of links in link tip coordinates
 void Solver_Vereshchagin::get_link_acceleration(Twists& xDotdot)
 {
-    assert(xDotdot.size() == ns);
-
-    //Ask Sven how size does not increse...vector is not reseted in each iteration
-    for (int i = 0; i < ns; i++) {
+    assert(xDotdot.size() == ns + 1);
+    xDotdot[0] = acc_root;
+    for (int i = 1; i < ns + 1; i++) {
         xDotdot[i] = results[i].acc;
     }
 }
@@ -410,21 +409,21 @@ void Solver_Vereshchagin::get_link_acceleration(Twists& xDotdot)
 //variable Type is ArticulatedBodyInertia!
 void Solver_Vereshchagin::get_link_inertias(Inertias &h)
 {
-    assert(h.size() == ns);
+    assert(h.size() == ns + 1);
 
-    for (int i = 0; i < ns; i++) {
+    for (int i = 0; i < ns + 1; i++) {
         h[i] = results[i].H;
     }
 }
 
 
 //U ...bias or external forces or both????? In Featherstone book is both!
-void Solver_Vereshchagin::get_bias_force(Wrenches &u)
+void Solver_Vereshchagin::get_bias_force(Wrenches &bias)
 {
-    assert(u.size() == ns);
-    // u.clear();
-    for (int i = 0; i < ns; i++) {
-        u[i] = results[i].U;
+    assert(bias.size() == ns + 1);
+
+    for (int i = 0; i < ns + 1; i++) {
+        bias[i] = results[i].U;
     }
 
 }
