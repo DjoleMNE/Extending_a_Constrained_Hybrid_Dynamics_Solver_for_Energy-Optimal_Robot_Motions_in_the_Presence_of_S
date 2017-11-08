@@ -15,13 +15,13 @@ class Initialization {
 
 public:
     KDL::Chain chaindyn;
-    KDL::Twist* root_acc;
-    KDL::JntArray* jointPoses;
-    KDL::JntArray* jointRates;
-    KDL::JntArray* jointAccelerations;
-    KDL::JntArray* joint_ff_torques;
-    KDL::JntArray* beta;
-    KDL::Jacobian* alpha;
+    KDL::Twist root_acc;
+    KDL::JntArray jointPoses;
+    KDL::JntArray jointRates;
+    KDL::JntArray jointAccelerations;
+    KDL::JntArray ff_torques;
+    KDL::JntArray beta;
+    KDL::Jacobian alpha;
     KDL::Wrenches externalNetForce;
     double joint_inertia = 0;
     int numberOfConstraints = 0;
@@ -29,6 +29,7 @@ public:
     Initialization(){
 
     }
+
     Initialization(KDL::Chain chaindyn, double joint_inertia){
         this -> chaindyn = chaindyn;
         this -> joint_inertia = joint_inertia;
@@ -40,19 +41,19 @@ public:
         //desired is given by an interpolator
         //error is the difference between desired-actual
         //in this test only the actual values are printed.
-        jointPoses = new KDL::JntArray(chaindyn.getNrOfJoints());
-        jointRates = new KDL::JntArray(chaindyn.getNrOfJoints());
-        jointAccelerations = new KDL::JntArray(chaindyn.getNrOfJoints());
-        joint_ff_torques = new KDL::JntArray(chaindyn.getNrOfJoints());
+        jointPoses =  KDL::JntArray(chaindyn.getNrOfJoints());
+        jointRates =  KDL::JntArray(chaindyn.getNrOfJoints());
+        jointAccelerations =  KDL::JntArray(chaindyn.getNrOfJoints());
+        ff_torques =  KDL::JntArray(chaindyn.getNrOfJoints());
 
         // Initial arm position configuration/constraint
-        jointPoses[0](0) = M_PI/2.0; // initial joint0 pose
-        jointPoses[0](1) = M_PI/6.0;
+        jointPoses(0) = M_PI/2.0; // initial joint0 pose
+        jointPoses(1) = M_PI/6.0;
         //j0=0.0, j1=pi/6.0 correspond to x = 0.2, y = -0.7464
         //j0=2*pi/3.0, j1=pi/4.0 correspond to x = 0.44992, y = 0.58636
 
-        joint_ff_torques[0](0) = 0;
-        joint_ff_torques[0](1) = 0;
+        ff_torques(0) = 0;
+        ff_torques(1) = 0;
     }
 
     //Definition of constraints and external disturbances
@@ -84,8 +85,8 @@ public:
         // KDL::Vector constrainZAngular2(0.0, 0.0, 1.0);
         // KDL::Twist constraintForcesZ2(constrainZLinear2, constrainZAngular2);
 
-        alpha = new KDL::Jacobian(numberOfConstraints);
-        alpha->setColumn(0, constraintForcesX);
+        alpha =  KDL::Jacobian(numberOfConstraints);
+        alpha.setColumn(0, constraintForcesX);
         // alpha-> setColumn(1, constraintForcesY);
         // alpha -> setColumn(2, constraintForcesZ);
         // alpha -> setColumn(3, constraintForcesX2);
@@ -93,19 +94,19 @@ public:
         // alpha -> setColumn(5, constraintForcesZ2);
 
         //Acceleration energy at  the end-effector
-        beta = new KDL::JntArray(numberOfConstraints); //set to zero.
+        beta = KDL::JntArray(numberOfConstraints); //set to zero.
         //the task is to keep ee_acc to 0 in specified direction by constrain<>Angular/constrain<>Linear!
-        beta[0](0) = 0.0;
+        beta(0) = 0.0;
         // beta[0](1) = 3.0;
         // beta[0](2) = 0.0;
         // beta[0](3) = 0.0;
         // beta[0](4) = 0.0;
         // beta[0](5) = 0.0;
 
-        //arm root acceleration
-        KDL::Vector linearAcc(0.0, -9.81, 0.0); //gravitational acceleration along Y
+        //arm root acceleration - gravitational acceleration along Y
+        KDL::Vector linearAcc(0.0, -9.81, 0.0);
         KDL::Vector angularAcc(0.0, 0.0, 0.0);
-        root_acc = new KDL::Twist(linearAcc, angularAcc);
+        root_acc = KDL::Twist(linearAcc, angularAcc);
 
         //external forces on the arm
         KDL::Vector externalForce1(0.0, 0.0, 0.0);
@@ -153,38 +154,37 @@ public:
 
 class Friction_enabled_vereshchagin
 {
-    KDL::Solver_Vereshchagin* solver;
     Initialization init_params;
+    KDL::Solver_Vereshchagin solver;
     std::vector<KDL::Twist> sum_xDotdot;
     std::vector<KDL::ArticulatedBodyInertia> sum_H;
     KDL::Wrenches sum_U;
 
     //file for storing torque values and respective acc energy imposed by them
     std::ofstream plot_file;
-    int numb_joints = 0, numb_segments = 0, numb_steps = 40;
+    int numb_joints = 0, numb_segments = 0, num_steps = 40;
 
 public:
-    KDL::JntArray* friction_torque;
+    KDL::JntArray friction_torque;
     double max_acc_energy = 0;
     std::vector<double> optimum_torques;
 
-    Friction_enabled_vereshchagin (Initialization parameters, std::vector<double> friction_tau, int numb_steps) {
-        this -> numb_steps = numb_steps;
-        init_params = parameters;
+    Friction_enabled_vereshchagin(Initialization parameters, std::vector<double> friction_tau, int steps): init_params(parameters), num_steps(steps), solver(init_params.chaindyn, init_params.root_acc, init_params.numberOfConstraints) {
+
         numb_joints = init_params.chaindyn.getNrOfJoints();
         numb_segments = init_params.chaindyn.getNrOfSegments();
 
-        friction_torque = new KDL::JntArray(friction_tau.size());
-        friction_torque -> resize(numb_joints);
+        friction_torque = KDL::JntArray(friction_tau.size());
+        friction_torque.resize(numb_joints);
         sum_xDotdot.resize(numb_segments + 1);
         sum_H.resize(numb_segments + 1);
         sum_U.resize(numb_segments + 1);
         optimum_torques.resize(numb_joints);
 
         for(int i = 0; i < numb_joints; i++){
-            friction_torque[0](i) = friction_tau[i];
+            friction_torque(i) = friction_tau[i];
         }
-        solver = new KDL::Solver_Vereshchagin(init_params.chaindyn, *init_params.root_acc, init_params.numberOfConstraints);
+
     }
 
     void cart_to_jnt() {
@@ -193,12 +193,12 @@ public:
 
         //Define resolution(step value) for each joint
         int temp_numb_joints = numb_joints;
-        std::vector<int> steps_set(numb_joints, numb_steps);
+        std::vector<int> steps_set(numb_joints, num_steps);
         std::vector<double> resulting_set(numb_joints);
         std::vector<double> resolution;
 
         for (int i = 0; i < numb_joints; i++){
-            resolution.push_back((2 * friction_torque[0](i)) / numb_steps);
+            resolution.push_back((2 * friction_torque(i)) / num_steps);
         }
 
         iterate_over_torques(resolution, 0, steps_set, resulting_set);
@@ -226,17 +226,17 @@ private:
 
         if (joint >= numb_joints) {
 
-            KDL::JntArray* new_ff_torques = new KDL::JntArray(numb_joints);
-            KDL::JntArray* temp_friction_torques = new KDL::JntArray(numb_joints);
+            KDL::JntArray new_ff_torques(numb_joints);
+            KDL::JntArray temp_friction_torques(numb_joints);
 
             for(int j = 0; j < numb_joints; j++){
-                temp_friction_torques[0](j) = resulting_set[j];
+                temp_friction_torques(j) = resulting_set[j];
             }
 
             //TODO
             //this is only relevant for Simulation?? BEcause there we get them as current
             // select_non_moving_joints(*temp_friction_torques);
-            KDL::Add(*init_params.joint_ff_torques, *temp_friction_torques, *new_ff_torques);
+            KDL::Add(init_params.ff_torques, temp_friction_torques, new_ff_torques);
 
             //TODO
             //Check if acc is changed/overwritten after each call of CartToJnt!!! Yes it is!!!!
@@ -266,19 +266,19 @@ private:
             //Further issues with only constraint torques as output are defined more in solver code!!!
             //Here is the torques values are reseted in each iteration~!
 
-            int return_solver = solver -> CartToJnt(*init_params.jointPoses, *init_params.jointRates, *init_params.jointAccelerations, *init_params.alpha, *init_params.beta, init_params.externalNetForce, *new_ff_torques);
+            int return_solver = solver.CartToJnt(init_params.jointPoses, init_params.jointRates, init_params.jointAccelerations, init_params.alpha, init_params.beta, init_params.externalNetForce, new_ff_torques);
 
             if (return_solver == 0){
-                solver -> get_link_acceleration(sum_xDotdot);
-                solver -> get_link_inertias(sum_H);
-                solver -> get_bias_force(sum_U);
+                solver.get_link_acceleration(sum_xDotdot);
+                solver.get_link_inertias(sum_H);
+                solver.get_bias_force(sum_U);
              }
 
              else{
                  std::cout << "Error: unmatching matrix and array sizes" << '\n';
              }
 
-             double acc_energy = compute_acc_energy(*new_ff_torques);
+             double acc_energy = compute_acc_energy(new_ff_torques);
 
              //write data in the file
              for (int k = 0; k < numb_joints + 1; k++){
@@ -300,14 +300,14 @@ private:
 
         else {
             for (int i = 0; i < steps_set[joint]; i++){
-                resulting_set[joint] = -friction_torque[0](joint) +  (resolution[joint]*(i+1));
+                resulting_set[joint] = -friction_torque(joint) +  (resolution[joint]*(i+1));
                 iterate_over_torques(resolution, joint + 1, steps_set, resulting_set);
             }
         }
     }
 
     //Calculate acceleration energy based on Gauss least constraint principle
-    double compute_acc_energy(KDL::JntArray ff_torques) {
+    double compute_acc_energy(KDL::JntArray &ff_torques) {
         //Talk with Sven rearding jointArray implementation, accesing and initialization!!!
         //Azamat wanted to work with row vectors?????
         // std::cout << friction_torque[0]<< '\n';
@@ -318,8 +318,8 @@ private:
 
         //check if here should be ff_torques+friction_torque of both!
         //From the paper it seams that Q is ff_torque + friction_torque
-        for (int j = 0; j < numb_joints; j++)  {
-            joint_sum = joint_sum  + 0.5 * (joint_inertia * pow(init_params.jointAccelerations[0](j), 2)) - ff_torques(j) * init_params.jointAccelerations[0](j);
+        for (int j = 0; j < numb_joints; j++) {
+            joint_sum = joint_sum  + 0.5 * (joint_inertia * pow(init_params.jointAccelerations(j), 2)) - ff_torques(j) * init_params.jointAccelerations(j);
         }
 
         for (int i = 0; i < numb_segments + 1; i++) {
@@ -339,7 +339,7 @@ private:
             //TODO test functioon by calling it with simulation
             //there is no sense calling it witout simulation
             //But it seams that works
-            if (abs(init_params.jointRates[0](i)) > 0.01){
+            if (abs(init_params.jointRates(i)) > 0.01){
                 temp_friction_torques(i) = 0;
             }
             else {
@@ -351,21 +351,17 @@ private:
 
 class Simulation
 {
-    KDL::Solver_Vereshchagin* original_solver;
+    KDL::Solver_Vereshchagin original_solver;
     Initialization init_params;
-    KDL::JntArray* jointPoses;
-    KDL::JntArray* jointRates;
-    KDL::JntArray* jointAccelerations;
-    KDL::JntArray* friction_torque;
+    KDL::JntArray jointPoses;
+    KDL::JntArray jointRates;
+    KDL::JntArray jointAccelerations;
+    KDL::JntArray friction_torque;
     double time_delta = 0.01;
 
 public:
 
-    Simulation(Initialization init_params, double time_delta) {
-        this -> time_delta = time_delta;
-        this -> init_params = init_params;
-        original_solver = new KDL::Solver_Vereshchagin(init_params.chaindyn, *init_params.root_acc, init_params.numberOfConstraints);
-
+    Simulation(Initialization init_params, double time_delta): time_delta(time_delta), init_params(init_params), original_solver(init_params.chaindyn, init_params.root_acc, init_params.numberOfConstraints) {
         jointPoses = init_params.jointPoses;
         jointRates = init_params.jointRates;
         jointAccelerations = init_params.jointAccelerations;
@@ -375,22 +371,22 @@ public:
     void print_current_state(double current_time)
     {
         printf("time              j0_pose       j1_pose        j0_rate       j1_rate         j0_acc        j1_acc \n");
-        printf("%f          %f      %f       %f     %f       %f      %f\n", current_time, jointPoses[0](0), jointPoses[0](1), jointRates[0](0), jointRates[0](1), jointAccelerations[0](0), jointAccelerations[0](1));
+        printf("%f          %f      %f       %f     %f       %f      %f\n", current_time, jointPoses(0), jointPoses(1), jointRates(0), jointRates(1), jointAccelerations(0), jointAccelerations(1));
 
     }
 
     KDL::JntArray step() {
 
-        int return_solver = original_solver -> CartToJnt(jointPoses[0], jointRates[0], jointAccelerations[0], *init_params.alpha, *init_params.beta, init_params.externalNetForce, *init_params.joint_ff_torques);
+        int return_solver = original_solver.CartToJnt(jointPoses, jointRates, jointAccelerations, init_params.alpha, init_params.beta, init_params.externalNetForce, init_params.ff_torques);
 
         if (return_solver == 0){
             integrate();
-            return *jointPoses;
+            return jointPoses;
            }
 
          else{
              std::cout << "Error: unmatching matrix and array sizes, initial poses returned" << '\n';
-             return *jointPoses;
+             return jointPoses;
          }
     }
 
@@ -398,12 +394,11 @@ private:
     //TODO make printing and integrate functions generic for N number of joints!!!!
     void integrate() {
         // Integration(robot joint values for rates and poses; actual) at the given "instanteneous" interval for joint position and velocity.
-        jointRates[0](0) = jointRates[0](0) + jointAccelerations[0](0) * time_delta; //Euler Forward
-        jointPoses[0](0) = jointPoses[0](0) + (jointRates[0](0) - jointAccelerations[0](0) * time_delta / 2.0) * time_delta; //Trapezoidal rule
-        jointRates[0](1) = jointRates[0](1) + jointAccelerations[0](1) * time_delta; //Euler Forward
-        jointPoses[0](1) = jointPoses[0](1) + (jointRates[0](1) - jointAccelerations[0](1) * time_delta / 2.0) * time_delta;
+        jointRates(0) = jointRates(0) + jointAccelerations(0) * time_delta; //Euler Forward
+        jointPoses(0) = jointPoses(0) + (jointRates(0) - jointAccelerations(0) * time_delta / 2.0) * time_delta; //Trapezoidal rule
+        jointRates(1) = jointRates(1) + jointAccelerations(1) * time_delta; //Euler Forward
+        jointPoses(1) = jointPoses(1) + (jointRates(1) - jointAccelerations(1) * time_delta / 2.0) * time_delta;
     }
-
 };
 
 int main(int argc, char* argv[])
