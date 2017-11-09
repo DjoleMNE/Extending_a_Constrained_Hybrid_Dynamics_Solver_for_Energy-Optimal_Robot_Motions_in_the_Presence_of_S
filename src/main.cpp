@@ -99,7 +99,7 @@ void create_my_motion_specification(motion_specification &m)
     m.external_force[1] = KDL::Wrench();
 
     KDL::Twist unit_constraint_force_x(
-            KDL::Vector(0.0, 0.0, 0.0),     // linear
+            KDL::Vector(1.0, 0.0, 0.0),     // linear
             KDL::Vector(0.0, 0.0, 0.0));    // angular
     m.end_effector_unit_constraint_forces.setColumn(0, unit_constraint_force_x);
     m.end_effector_acceleration_energy_setpoint(0) = 0.0;
@@ -132,7 +132,7 @@ class vereshchagin_with_friction {
             // How this should be changed if the class is moved in separate file?
             assert(number_of_joints_ == 2);
 
-            const int NUMBER_OF_STEPS = 40;
+            const int NUMBER_OF_STEPS = 80;
 
             KDL::JntArray initial_friction (number_of_joints_);
 
@@ -153,7 +153,6 @@ class vereshchagin_with_friction {
                 if(i != number_of_joints_) plot_file << optimum_torques[i] <<" ";
                 else plot_file << max_acc_energy;
             }
-
             plot_file.close();
         }
 
@@ -174,6 +173,8 @@ class vereshchagin_with_friction {
                     friction_torque_(j) = resulting_set[j];
                 }
 
+                //TODO
+                // select_non_moving_joints(*temp_friction_torques);
                 KDL::Subtract(m.feedforward_torque, friction_torque_, tau_);
                 qdd_ = m.qdd;
 
@@ -212,8 +213,8 @@ class vereshchagin_with_friction {
             }
 
             else {
-               for (int i = 0; i < steps; i++){
-                   resulting_set[joint_index] = -initial_friction(joint_index) +  (resolution[joint_index] * (i + 1));
+               for (int i = 0; i <= steps; i++){
+                   resulting_set[joint_index] = -initial_friction(joint_index) +  (resolution[joint_index] * i);
                    iterate_over_torques(m, initial_friction, resolution, joint_index + 1, steps, resulting_set);
                }
             }
@@ -242,6 +243,23 @@ class vereshchagin_with_friction {
 
             return acc_energy_joint + acc_energy_segment;
         }
+
+
+        // void select_non_moving_joints(KDL::JntArray &temp_friction_torques){
+        //
+        //     for (int i = 0; i < num_joint; i++) {
+        //         //TODO check for the right 0 treshold!!!!! Best ask Sven for float inacuracy
+        //         //TODO test functioon by calling it with simulation
+        //         //there is no sense calling it witout simulation
+        //         //But it seams that works
+        //         if (abs(init_params.jointRates(i)) > 0.01){
+        //             temp_friction_torques(i) = 0;
+        //         }
+        //         else {
+        //             std::cout <<"Not moving!!  "<< i << " " <<temp_friction_torques(i) << '\n';
+        //         }
+        //     }
+        // }
 
         KDL::JntArray tau_; // as input to original solver (sum of external feed-forward torque and friction torque), overwritten during call!
         KDL::JntArray qdd_; // as input to original solver, overwritten during call!

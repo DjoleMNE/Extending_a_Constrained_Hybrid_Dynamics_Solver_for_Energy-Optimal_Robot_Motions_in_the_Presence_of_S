@@ -3,6 +3,7 @@ import sympy as sp
 from sympy import *
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.patches as mpatches
 from matplotlib import cm
 import pandas as pd
 from matplotlib.patches import FancyArrowPatch
@@ -44,5 +45,8 @@ class Arrow3D(FancyArrowPatch):
 
 a = Arrow3D([input_data[-1,0], input_data[-1,0]], [input_data[-1,1], input_data[-1,1]], [input_data[-1,2], input_data[-1,2]+input_data[-1,2]/10], mutation_scale=20,  lw=1, arrowstyle="-|>", color="k")
 ax.add_artist(a)
+
+ax.text(input_data[-1,0],input_data[-1,1], (input_data[-1,2] +input_data[-1,2]/10),  '%d: [%d, %d]' % (input_data[-1,2], input_data[-1,0], input_data[-1,1]), size=15, zorder=1, color='blue') 
+
 plt.savefig('acc_energy_surface.pdf')
 plt.show()
