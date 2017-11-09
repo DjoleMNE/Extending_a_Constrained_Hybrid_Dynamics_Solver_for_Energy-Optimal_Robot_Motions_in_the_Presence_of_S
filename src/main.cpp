@@ -106,6 +106,7 @@ void create_my_motion_specification(motion_specification &m)
 }
 
 class vereshchagin_with_friction {
+
     public:
         vereshchagin_with_friction(
                 const extended_kinematic_chain &chain,
@@ -118,56 +119,106 @@ class vereshchagin_with_friction {
               friction_torque_(chain.chain.getNrOfJoints())
         {
             number_of_frames_ = chain.chain.getNrOfSegments() + 1;
+            number_of_joints_ = chain_.chain.getNrOfJoints();
             frame_acceleration_.resize(number_of_frames_);
             articulated_body_inertia_.resize(number_of_frames_);
             bias_force_.resize(number_of_frames_);
+            max_acc_energy = 0;
         }
 
         void solve(motion_specification &m)
         {
             // current implementation is for two joints only!
             // How this should be changed if the class is moved in separate file?
-            assert(chain_.chain.getNrOfJoints() == 2);
+            assert(number_of_joints_ == 2);
 
             const int NUMBER_OF_STEPS = 40;
 
-            double friction_0 = chain_.joint_static_friction[0];
-            double friction_1 = chain_.joint_static_friction[1];
-            double resolution_0 = (2.0 * friction_0) / (1.0 * NUMBER_OF_STEPS);
-            double resolution_1 = (2.0 * friction_1) / (1.0 * NUMBER_OF_STEPS);
+            KDL::JntArray initial_friction (number_of_joints_);
 
-            plot_file.open ("plot_data.txt");
+            for (int i = 0; i < number_of_joints_; i++) initial_friction(i) = chain_.joint_static_friction[i];
+            std::vector<double> resulting_torque_set(number_of_joints_);
 
-            for (friction_torque_(0) = -friction_0; friction_torque_(0) <= friction_0; friction_torque_(0) += resolution_0) {
-                for (friction_torque_(1) = -friction_1; friction_torque_(1) <= friction_1; friction_torque_(1) += resolution_1) {
+            //Define resolution(step value) for each joint
+            std::vector<double> resolution;
+            for (int i = 0; i < number_of_joints_; i++){
+                resolution.push_back((2 * initial_friction(i)) / (1.0 * NUMBER_OF_STEPS));
+            }
 
-                    KDL::Add(m.feedforward_torque, friction_torque_, tau_);
-                    qdd_ = m.qdd;
+            plot_file.open ("/home/djole/Downloads/Master/R_&_D/KDL_GIT/Testing_repo/src/Simulation/plot_data.txt");
 
-                    int result = solver_.CartToJnt(
-                            m.q, m.qd, qdd_, //qdd_ is overwritten by accual/resulting acceleration
-                            m.end_effector_unit_constraint_forces,       // alpha
-                            m.end_effector_acceleration_energy_setpoint, // beta
-                            m.external_force,
-                            tau_);  // tau_ is overwritten!
-                    assert(result == 0);
+            iterate_over_torques(m, initial_friction, resolution, 0, NUMBER_OF_STEPS, resulting_torque_set);
 
-                    solver_.get_link_acceleration(frame_acceleration_);
-                    solver_.get_link_inertias(articulated_body_inertia_);
-                    solver_.get_bias_force(bias_force_);
-
-                    double acc_energy = compute_acc_energy(
-                            frame_acceleration_, articulated_body_inertia_,
-                            bias_force_, qdd_, tau_);
-
-                    plot_file << friction_torque_(0) << " " << friction_torque_(1) << " " << acc_energy << std::endl;
-                }
+            for (int i = 0; i < number_of_joints_ + 1; i++) {
+                if(i != number_of_joints_) plot_file << optimum_torques[i] <<" ";
+                else plot_file << max_acc_energy;
             }
 
             plot_file.close();
         }
 
     private:
+
+        void iterate_over_torques(
+            motion_specification &m,
+            const KDL::JntArray initial_friction,
+            const std::vector<double> resolution,
+            int joint_index,
+            const int steps,
+            std::vector<double> resulting_set)
+        {
+
+            if (joint_index >= number_of_joints_) {
+
+                for(int j = 0; j < number_of_joints_; j++){
+                    friction_torque_(j) = resulting_set[j];
+                }
+
+                KDL::Subtract(m.feedforward_torque, friction_torque_, tau_);
+                qdd_ = m.qdd;
+
+                int result = solver_.CartToJnt(
+                             m.q, m.qd, qdd_, //qdd_ is overwritten by accual/resulting acceleration
+                             m.end_effector_unit_constraint_forces,       // alpha
+                             m.end_effector_acceleration_energy_setpoint, // beta
+                             m.external_force,
+                             tau_);  // tau_ is overwritten!
+                     assert(result == 0);
+
+                 solver_.get_link_acceleration(frame_acceleration_);
+                 solver_.get_link_inertias(articulated_body_inertia_);
+                 solver_.get_bias_force(bias_force_);
+
+                 double acc_energy = compute_acc_energy(
+                         frame_acceleration_, articulated_body_inertia_,
+                         bias_force_, qdd_, tau_);
+
+                //write data in the file
+                for (int k = 0; k < number_of_joints_ + 1; k++){
+                    if(k != number_of_joints_){
+                        plot_file << resulting_set[k] <<" ";
+                    }
+                    else{
+                        plot_file << acc_energy <<"\n";
+                    }
+                }
+
+                if (acc_energy > max_acc_energy){
+                    max_acc_energy = acc_energy;
+                    optimum_torques = resulting_set;
+                }
+
+                return;
+            }
+
+            else {
+               for (int i = 0; i < steps; i++){
+                   resulting_set[joint_index] = -initial_friction(joint_index) +  (resolution[joint_index] * (i + 1));
+                   iterate_over_torques(m, initial_friction, resolution, joint_index + 1, steps, resulting_set);
+               }
+            }
+        }
+
         //Calculate acceleration energy based on Gauss least constraint principle
         double compute_acc_energy(
                 const std::vector<KDL::Twist> &xdd,
@@ -178,7 +229,7 @@ class vereshchagin_with_friction {
         {
 
             double acc_energy_joint = 0.0;
-            for (int i = 0; i < chain_.chain.getNrOfJoints(); i++)  {
+            for (int i = 0; i < number_of_joints_; i++)  {
                 acc_energy_joint += 0.5 * (qdd(i) * chain_.joint_inertia[i] * qdd(i));
                 acc_energy_joint -= 0.5 * (tau(i) * qdd(i));
             }
@@ -197,15 +248,18 @@ class vereshchagin_with_friction {
         KDL::JntArray friction_torque_;
         KDL::Solver_Vereshchagin solver_;
         int number_of_frames_;
+        int number_of_joints_;
         extended_kinematic_chain chain_;
 
         std::vector<KDL::Twist> frame_acceleration_;
         std::vector<KDL::ArticulatedBodyInertia> articulated_body_inertia_;
         KDL::Wrenches bias_force_;
 
+        double max_acc_energy;
+        std::vector<double> optimum_torques;
+
         std::ofstream plot_file;
 };
-
 
 
 int main(int argc, char* argv[])
