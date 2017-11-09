@@ -68,7 +68,7 @@ public:
         // KDL::Vector constrainYLinear(0.0, 1.0, 0.0);
         // KDL::Vector constrainYAngular(0.0, 0.0, 0.0);
         // KDL::Twist constraintForcesY(constrainYLinear, constrainYAngular);
-        //
+
         // KDL::Vector constrainZLinear(0.0, 0.0, 1.0);
         // KDL::Vector constrainZAngular(0.0, 0.0, 0.0);
         // KDL::Twist constraintForcesZ(constrainZLinear, constrainZAngular);
@@ -87,7 +87,7 @@ public:
 
         alpha =  KDL::Jacobian(numberOfConstraints);
         alpha.setColumn(0, constraintForcesX);
-        // alpha-> setColumn(1, constraintForcesY);
+        alpha.setColumn(1, constraintForcesY);
         // alpha -> setColumn(2, constraintForcesZ);
         // alpha -> setColumn(3, constraintForcesX2);
         // alpha -> setColumn(4, constraintForcesY2);
@@ -97,14 +97,14 @@ public:
         beta = KDL::JntArray(numberOfConstraints); //set to zero.
         //the task is to keep ee_acc to 0 in specified direction by constrain<>Angular/constrain<>Linear!
         beta(0) = 0.0;
-        // beta[0](1) = 3.0;
-        // beta[0](2) = 0.0;
-        // beta[0](3) = 0.0;
+        // beta(1) = 0.0;
+        // beta(2) = 0.0;
+        // beta(3) = 0.0;
         // beta[0](4) = 0.0;
         // beta[0](5) = 0.0;
 
         //arm root acceleration - gravitational acceleration along Y
-        KDL::Vector linearAcc(0.0, -9.81, 0.0);
+        KDL::Vector linearAcc(0.0,-9.81, 0.0);
         KDL::Vector angularAcc(0.0, 0.0, 0.0);
         root_acc = KDL::Twist(linearAcc, angularAcc);
 
@@ -169,12 +169,17 @@ public:
     double max_acc_energy = 0;
     std::vector<double> optimum_torques;
 
-    Friction_enabled_vereshchagin(Initialization parameters, std::vector<double> friction_tau, int steps): init_params(parameters), num_steps(steps), solver(init_params.chaindyn, init_params.root_acc, init_params.numberOfConstraints) {
+    Friction_enabled_vereshchagin(Initialization parameters, std::vector<double> friction_tau, int steps):
+            init_params(parameters),
+            num_steps(steps),
+            solver(init_params.chaindyn, init_params.root_acc, init_params.numberOfConstraints)
+    {
 
         num_joint = init_params.chaindyn.getNrOfJoints();
         num_segments = init_params.chaindyn.getNrOfSegments();
 
         friction_torque = KDL::JntArray(friction_tau.size());
+        //Make assertion
         friction_torque.resize(num_joint);
         sum_xDotdot.resize(num_segments + 1);
         sum_H.resize(num_segments + 1);
@@ -233,9 +238,8 @@ private:
             }
 
             //TODO
-            //this is only relevant for Simulation?? BEcause there we get them as current
             // select_non_moving_joints(*temp_friction_torques);
-            KDL::Add(init_params.ff_torques, temp_friction_torques, new_ff_torques);
+            KDL::Subtract(init_params.ff_torques, temp_friction_torques, new_ff_torques);
 
             //TODO
             //Check if acc is changed/overwritten after each call of CartToJnt!!! Yes it is!!!!
@@ -307,27 +311,20 @@ private:
 
     //Calculate acceleration energy based on Gauss least constraint principle
     double compute_acc_energy(KDL::JntArray &ff_torques) {
-        //Talk with Sven rearding jointArray implementation, accesing and initialization!!!
-        //Azamat wanted to work with row vectors?????
-        // std::cout << friction_torque[0]<< '\n';
 
         double joint_sum = 0;
         double segment_sum = 0;
         double joint_inertia = init_params.joint_inertia;
 
-        //check if here should be ff_torques+friction_torque of both!
-        //From the paper it seams that Q is ff_torque + friction_torque
         for (int j = 0; j < num_joint; j++) {
-            joint_sum = joint_sum  + 0.5 * (joint_inertia * pow(init_params.jointAccelerations(j), 2)) - ff_torques(j) * init_params.jointAccelerations(j);
+            joint_sum += 0.5 * (joint_inertia * pow(init_params.jointAccelerations(j), 2));
+            joint_sum -= 0.5 * ff_torques(j) * init_params.jointAccelerations(j);
         }
 
         for (int i = 0; i < num_segments + 1; i++) {
-            segment_sum += 0.5 * (dot(sum_xDotdot[i], sum_H[i] * sum_xDotdot[i]) + dot(sum_U[i], sum_xDotdot[i]));
-            std::cout << i <<"  ";
-            std::cout << sum_xDotdot[i] << '\n';
-            // std::cout << sum_xDotdot.size() << '\n';
+            segment_sum += 0.5 * dot(sum_xDotdot[i], sum_H[i] * sum_xDotdot[i]);
+            segment_sum += 0.5 * dot(sum_U[i], sum_xDotdot[i]);
         }
-
         return joint_sum + segment_sum;
     }
 

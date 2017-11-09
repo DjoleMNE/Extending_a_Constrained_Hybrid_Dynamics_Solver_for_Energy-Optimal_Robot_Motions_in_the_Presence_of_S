@@ -297,7 +297,9 @@ void Solver_Vereshchagin::constraint_calculation(const JntArray& beta)
     //ToDo: Need to check ill conditions
 
     //M_0_inverse=results[0].M.inverse();
-    svd_eigen_HH(results[0].M, Um, Sm, Vm, tmpm);
+    int result  = svd_eigen_HH(results[0].M, Um, Sm, Vm, tmpm);
+    assert(result == 0);
+
     //truncated svd, what would sdls, dls physically mean?
     for (unsigned int i = 0; i < nc; i++)
         if (Sm(i) < 1e-14)
@@ -374,6 +376,7 @@ void Solver_Vereshchagin::final_upwards_sweep(JntArray &q_dotdot, JntArray &torq
         //Due to this conflict the implementation  of the algorithm needs to be changed.
         //final control value for torque???...nope!!!! only constraints!!!
         //Fina control tau consists of 3 parts!!!
+
         //Code Line bellow commented by Djordje Vukcevic....to avoid overwriting ff_torques
         // torques(j) = constraint_torque;
 
@@ -388,6 +391,7 @@ void Solver_Vereshchagin::final_upwards_sweep(JntArray &q_dotdot, JntArray &torq
         //Is this form ok for the paper approach....or we should transformed everything in base frame????
         //s.acc is specified under segment info in h file!!
         s.acc = s.F.Inverse(a_p + s.Z * q_dotdot(j) + s.C);//returns acceleration in link distal tip coordinates. For use needs to be transformed
+        //Here full control tau is included and acc is due to that tau
 
         if (chain.getSegment(i - 1).getJoint().getType() != Joint::None)
             j++;
