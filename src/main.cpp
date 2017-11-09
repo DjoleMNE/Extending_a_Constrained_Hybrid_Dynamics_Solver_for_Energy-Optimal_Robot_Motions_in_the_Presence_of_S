@@ -87,7 +87,7 @@ public:
 
         alpha =  KDL::Jacobian(numberOfConstraints);
         alpha.setColumn(0, constraintForcesX);
-        alpha.setColumn(1, constraintForcesY);
+        // alpha.setColumn(1, constraintForcesY);
         // alpha -> setColumn(2, constraintForcesZ);
         // alpha -> setColumn(3, constraintForcesX2);
         // alpha -> setColumn(4, constraintForcesY2);
