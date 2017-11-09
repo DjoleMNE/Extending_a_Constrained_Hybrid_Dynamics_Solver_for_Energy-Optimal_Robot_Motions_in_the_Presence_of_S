@@ -14,7 +14,7 @@
 
 const int NUMBER_OF_JOINTS = 2;
 const int NUMBER_OF_SEGMENTS = 2;
-const int NUMBER_OF_CONSTRAINTS = 1;
+const int NUMBER_OF_CONSTRAINTS = 6;
 
 class extended_kinematic_chain
 {
@@ -57,7 +57,7 @@ void create_my_robot(extended_kinematic_chain &c)
     for (int i = 0; i < NUMBER_OF_JOINTS; i++) c.joint_inertia[i] = 0.1;
 
     c.joint_static_friction.resize(NUMBER_OF_JOINTS);
-    for (int i = 0; i < NUMBER_OF_JOINTS; i++) c.joint_static_friction[i] = 40.0;
+    for (int i = 0; i < NUMBER_OF_JOINTS; i++) c.joint_static_friction[i] = 30.0;
 
     for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
         //last 3 inputs...input_scale, offset and joint inertia (d in paper)
@@ -103,6 +103,33 @@ void create_my_motion_specification(motion_specification &m)
             KDL::Vector(0.0, 0.0, 0.0));    // angular
     m.end_effector_unit_constraint_forces.setColumn(0, unit_constraint_force_x);
     m.end_effector_acceleration_energy_setpoint(0) = 0.0;
+    KDL::Twist unit_constraint_force_y(
+            KDL::Vector(0.0, 1.0, 0.0),     // linear
+            KDL::Vector(0.0, 0.0, 0.0));    // angular
+    m.end_effector_unit_constraint_forces.setColumn(1, unit_constraint_force_y);
+    m.end_effector_acceleration_energy_setpoint(1) = 3.0;
+    KDL::Twist unit_constraint_force_z(
+            KDL::Vector(0.0, 0.0, 1.0),     // linear
+            KDL::Vector(0.0, 0.0, 0.0));    // angular
+    m.end_effector_unit_constraint_forces.setColumn(2, unit_constraint_force_z);
+    m.end_effector_acceleration_energy_setpoint(2) = 0.0;
+
+    KDL::Twist unit_constraint_force_x1(
+            KDL::Vector(0.0, 0.0, 0.0),     // linear
+            KDL::Vector(1.0, 0.0, 0.0));    // angular
+    m.end_effector_unit_constraint_forces.setColumn(3, unit_constraint_force_x1);
+    m.end_effector_acceleration_energy_setpoint(3) = 0.0;
+    KDL::Twist unit_constraint_force_y1(
+            KDL::Vector(0.0, 0.0, 0.0),     // linear
+            KDL::Vector(0.0, 1.0, 0.0));    // angular
+    m.end_effector_unit_constraint_forces.setColumn(4, unit_constraint_force_y1);
+    m.end_effector_acceleration_energy_setpoint(4) = 0.0;
+    KDL::Twist unit_constraint_force_z1(
+            KDL::Vector(0.0, 0.0, 0.0),     // linear
+            KDL::Vector(0.0, 0.0, 1.0));    // angular
+    m.end_effector_unit_constraint_forces.setColumn(5, unit_constraint_force_z1);
+    m.end_effector_acceleration_energy_setpoint(5) = 0.0;
+
 }
 
 class vereshchagin_with_friction {
@@ -132,7 +159,7 @@ class vereshchagin_with_friction {
             // How this should be changed if the class is moved in separate file?
             assert(number_of_joints_ == 2);
 
-            const int NUMBER_OF_STEPS = 80;
+            const int NUMBER_OF_STEPS = 60;
 
             KDL::JntArray initial_friction (number_of_joints_);
 
