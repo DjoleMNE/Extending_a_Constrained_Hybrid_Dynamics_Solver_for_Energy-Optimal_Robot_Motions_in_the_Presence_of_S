@@ -14,7 +14,7 @@
 
 const int NUMBER_OF_JOINTS = 2;
 const int NUMBER_OF_SEGMENTS = 2;
-const int NUMBER_OF_CONSTRAINTS = 6;
+const int NUMBER_OF_CONSTRAINTS = 1;
 
 class extended_kinematic_chain
 {
@@ -99,36 +99,36 @@ void create_my_motion_specification(motion_specification &m)
     m.external_force[1] = KDL::Wrench();
 
     KDL::Twist unit_constraint_force_x(
-            KDL::Vector(1.0, 0.0, 0.0),     // linear
+            KDL::Vector(0.0, 0.0, 0.0),     // linear
             KDL::Vector(0.0, 0.0, 0.0));    // angular
     m.end_effector_unit_constraint_forces.setColumn(0, unit_constraint_force_x);
     m.end_effector_acceleration_energy_setpoint(0) = 0.0;
-    KDL::Twist unit_constraint_force_y(
-            KDL::Vector(0.0, 1.0, 0.0),     // linear
-            KDL::Vector(0.0, 0.0, 0.0));    // angular
-    m.end_effector_unit_constraint_forces.setColumn(1, unit_constraint_force_y);
-    m.end_effector_acceleration_energy_setpoint(1) = 3.0;
-    KDL::Twist unit_constraint_force_z(
-            KDL::Vector(0.0, 0.0, 1.0),     // linear
-            KDL::Vector(0.0, 0.0, 0.0));    // angular
-    m.end_effector_unit_constraint_forces.setColumn(2, unit_constraint_force_z);
-    m.end_effector_acceleration_energy_setpoint(2) = 0.0;
-
-    KDL::Twist unit_constraint_force_x1(
-            KDL::Vector(0.0, 0.0, 0.0),     // linear
-            KDL::Vector(1.0, 0.0, 0.0));    // angular
-    m.end_effector_unit_constraint_forces.setColumn(3, unit_constraint_force_x1);
-    m.end_effector_acceleration_energy_setpoint(3) = 0.0;
-    KDL::Twist unit_constraint_force_y1(
-            KDL::Vector(0.0, 0.0, 0.0),     // linear
-            KDL::Vector(0.0, 1.0, 0.0));    // angular
-    m.end_effector_unit_constraint_forces.setColumn(4, unit_constraint_force_y1);
-    m.end_effector_acceleration_energy_setpoint(4) = 0.0;
-    KDL::Twist unit_constraint_force_z1(
-            KDL::Vector(0.0, 0.0, 0.0),     // linear
-            KDL::Vector(0.0, 0.0, 1.0));    // angular
-    m.end_effector_unit_constraint_forces.setColumn(5, unit_constraint_force_z1);
-    m.end_effector_acceleration_energy_setpoint(5) = 0.0;
+    // KDL::Twist unit_constraint_force_y(
+    //         KDL::Vector(0.0, 1.0, 0.0),     // linear
+    //         KDL::Vector(0.0, 0.0, 0.0));    // angular
+    // m.end_effector_unit_constraint_forces.setColumn(1, unit_constraint_force_y);
+    // m.end_effector_acceleration_energy_setpoint(1) = 3.0;
+    // KDL::Twist unit_constraint_force_z(
+    //         KDL::Vector(0.0, 0.0, 1.0),     // linear
+    //         KDL::Vector(0.0, 0.0, 0.0));    // angular
+    // m.end_effector_unit_constraint_forces.setColumn(2, unit_constraint_force_z);
+    // m.end_effector_acceleration_energy_setpoint(2) = 0.0;
+    //
+    // KDL::Twist unit_constraint_force_x1(
+    //         KDL::Vector(0.0, 0.0, 0.0),     // linear
+    //         KDL::Vector(1.0, 0.0, 0.0));    // angular
+    // m.end_effector_unit_constraint_forces.setColumn(3, unit_constraint_force_x1);
+    // m.end_effector_acceleration_energy_setpoint(3) = 0.0;
+    // KDL::Twist unit_constraint_force_y1(
+    //         KDL::Vector(0.0, 0.0, 0.0),     // linear
+    //         KDL::Vector(0.0, 1.0, 0.0));    // angular
+    // m.end_effector_unit_constraint_forces.setColumn(4, unit_constraint_force_y1);
+    // m.end_effector_acceleration_energy_setpoint(4) = 0.0;
+    // KDL::Twist unit_constraint_force_z1(
+    //         KDL::Vector(0.0, 0.0, 0.0),     // linear
+    //         KDL::Vector(0.0, 0.0, 1.0));    // angular
+    // m.end_effector_unit_constraint_forces.setColumn(5, unit_constraint_force_z1);
+    // m.end_effector_acceleration_energy_setpoint(5) = 0.0;
 
 }
 
