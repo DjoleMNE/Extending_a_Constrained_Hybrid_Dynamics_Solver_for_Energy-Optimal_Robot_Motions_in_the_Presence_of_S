@@ -1,4 +1,4 @@
-# Code based on MRC assignment in SS2017, MAS-HBRS. Authors: Santosh Thoduka and Aleksandar Mitrevski
+# Code based on MRC assignment in SS2017, MAS program H-BRS. Authors: Santosh Thoduka and Aleksandar Mitrevski
 # Modified and applied by Djordje Vukcevic
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,7 +14,7 @@ L2 = 0.4
 
 theta1, theta2 = sp.symbols('theta1, theta2')
 
-# Equations for end-effector position 
+# Equations for end-effector position
 eq1 = L1*sp.cos(theta1) + L2*sp.cos(theta1 + theta2)
 eq2 = L1*sp.sin(theta1) + L2*sp.sin(theta1 + theta2)
 
