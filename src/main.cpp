@@ -57,7 +57,9 @@ void create_my_robot(extended_kinematic_chain &c)
     for (int i = 0; i < NUMBER_OF_JOINTS; i++) c.joint_inertia[i] = 0.1;
 
     c.joint_static_friction.resize(NUMBER_OF_JOINTS);
-    for (int i = 0; i < NUMBER_OF_JOINTS; i++) c.joint_static_friction[i] = 30.0;
+    for (int i = 0; i < NUMBER_OF_JOINTS; i++) c.joint_static_friction[i] = 40.0;
+    // c.joint_static_friction[0] = 500;
+    // c.joint_static_friction[1] = 5;
 
     for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
         //last 3 inputs...input_scale, offset and joint inertia (d in paper)
@@ -155,11 +157,11 @@ class vereshchagin_with_friction {
 
         void solve(motion_specification &m)
         {
-            // current implementation is for two joints only!
+            // current implementation of assert is for two joints only!
             // How this should be changed if the class is moved in separate file?
             assert(number_of_joints_ == 2);
 
-            const int NUMBER_OF_STEPS = 60;
+            const int NUMBER_OF_STEPS = 50;
 
             KDL::JntArray initial_friction (number_of_joints_);
 
@@ -260,6 +262,7 @@ class vereshchagin_with_friction {
             for (int i = 0; i < number_of_joints_; i++)  {
                 acc_energy_joint += 0.5 * (qdd(i) * chain_.joint_inertia[i] * qdd(i));
                 acc_energy_joint -= 0.5 * (tau(i) * qdd(i));
+                // acc_energy_joint += qdd(i);
             }
 
             double acc_energy_segment = 0.0;
