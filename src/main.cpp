@@ -1,6 +1,6 @@
 /*
 Author(s): Djordje Vukcevic, Sven Schneider
-Copyright (c) [2017] 
+Copyright (c) [2017]
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -61,9 +61,9 @@ class motion_specification
               end_effector_unit_constraint_forces(number_of_constraints), //alpha
               end_effector_acceleration_energy_setpoint(number_of_constraints), //beta
               external_force(number_of_segments) //U in Vereshchagin 1989 paper
-        {
-        }
+              {
 
+              }
 
         KDL::JntArray q;
         KDL::JntArray qd;
@@ -132,7 +132,7 @@ void create_my_motion_specification(motion_specification &m)
     //         KDL::Vector(0.0, 1.0, 0.0),     // linear
     //         KDL::Vector(0.0, 0.0, 0.0));    // angular
     // m.end_effector_unit_constraint_forces.setColumn(1, unit_constraint_force_y);
-    // m.end_effector_acceleration_energy_setpoint(1) = 3.0;
+    // m.end_effector_acceleration_energy_setpoint(1) = 0.0;
     // KDL::Twist unit_constraint_force_z(
     //         KDL::Vector(0.0, 0.0, 1.0),     // linear
     //         KDL::Vector(0.0, 0.0, 0.0));    // angular

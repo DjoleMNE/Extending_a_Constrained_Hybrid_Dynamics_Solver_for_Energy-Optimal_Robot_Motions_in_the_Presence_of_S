@@ -31,7 +31,7 @@ fig.colorbar(surf, shrink=0.5, aspect=5)
 
 ax.set_xlabel('Tau_0', fontsize=18)
 ax.set_ylabel('Tau_1', fontsize=18)
-ax.set_zlabel('Acceleration energy', fontsize=18)
+ax.set_zlabel('Sum of acceleration in joints', fontsize=18)
 
 class Arrow3D(FancyArrowPatch):
 
@@ -45,10 +45,5 @@ class Arrow3D(FancyArrowPatch):
         self.set_positions((xs[0], ys[0]), (xs[1], ys[1]))
         FancyArrowPatch.draw(self, renderer)
 
-a = Arrow3D([input_data[-1,0], input_data[-1,0]], [input_data[-1,1], input_data[-1,1]], [input_data[-1,2], input_data[-1,2]+input_data[-1,2]/10], mutation_scale=20,  lw=1, arrowstyle="-|>", color="k")
-ax.add_artist(a)
-
-ax.text(input_data[-1,0],input_data[-1,1], (input_data[-1,2] +input_data[-1,2]/10),  'Max: %d [%d, %d]' % (input_data[-1,2], input_data[-1,0], input_data[-1,1]), size=15, zorder=1, color='blue')
-
-plt.savefig('acc_energy_surface.pdf')
+plt.savefig('acc.pdf')
 plt.show()
