@@ -119,7 +119,6 @@ void create_my_motion_specification(motion_specification &m)
     m.feedforward_torque(0) = 0.0;
     m.feedforward_torque(1) = 0.0;
 
-    // Should we assign vector istead of Wrench for each segment ????
     m.external_force[0] = KDL::Wrench();
     m.external_force[1] = KDL::Wrench();
 
