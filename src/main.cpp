@@ -35,9 +35,9 @@ SOFTWARE.
 #include <stdlib.h>     /* abs */
 
 
-const int NUMBER_OF_JOINTS = 2;
-const int NUMBER_OF_SEGMENTS = 2;
-const int NUMBER_OF_CONSTRAINTS = 1;
+// const int NUMBER_OF_JOINTS = 2;
+// const int NUMBER_OF_SEGMENTS = 2;
+const int NUMBER_OF_CONSTRAINTS = 6;
 
 class extended_kinematic_chain
 {
@@ -74,17 +74,90 @@ class motion_specification
         KDL::Wrenches external_force;
 };
 
-void create_my_robot(extended_kinematic_chain &c)
+void create_my_LWR_robot(extended_kinematic_chain &c)
 {
-    c.joint_inertia.resize(NUMBER_OF_JOINTS);
-    for (int i = 0; i < NUMBER_OF_JOINTS; i++) c.joint_inertia[i] = 0.1;
+    int number_of_joints = 7;
 
-    c.joint_static_friction.resize(NUMBER_OF_JOINTS);
-    for (int i = 0; i < NUMBER_OF_JOINTS; i++) c.joint_static_friction[i] = 40.0;
+    c.joint_inertia.resize(number_of_joints);
+    for (int i = 0; i < number_of_joints; i++) c.joint_inertia[i] = 0.5;
+
+    c.joint_static_friction.resize(number_of_joints);
+    for (int i = 0; i < number_of_joints; i++) c.joint_static_friction[i] = 40.0;
+
+    //Frames describe pose of the segment(base link) 0 tip, wrt joint 0 frame (inertial frame) - frame 0
+    //Frame defenes pose of joint 1 in respect to joint 0 (inertial frame)
+    //joint 0
+	// c.chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::None),
+	// 			  KDL::Frame::DH_Craig1989(0.0, 0.0, 0.31, 0.0)));
+
+
+	//joint 1
+	c.chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ, 1, 0, c.joint_inertia[0]),
+				  KDL::Frame::DH_Craig1989(0.0, 1.5707963, 0.0, 0.0),
+				  KDL::Frame::DH_Craig1989(0.0, 1.5707963, 0.0, 0.0).Inverse()*KDL::RigidBodyInertia(2,
+										 KDL::Vector::Zero(),
+										 KDL::RotationalInertia(0.0,0.0,0.0115343,0.0,0.0,0.0))));
+
+	//joint 2
+	c.chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ, 1, 0, c.joint_inertia[1]),
+				  KDL::Frame::DH_Craig1989(0.0, -1.5707963, 0.4, 0.0),
+				  KDL::Frame::DH_Craig1989(0.0, -1.5707963, 0.4, 0.0).Inverse()*KDL::RigidBodyInertia(2,
+										   KDL::Vector(0.0,-0.3120511,-0.0038871),
+										   KDL::RotationalInertia(-0.5471572,-0.0000302,-0.5423253,0.0,0.0,0.0018828))));
+
+	//joint 3
+	c.chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ, 1, 0, c.joint_inertia[2]),
+				  KDL::Frame::DH_Craig1989(0.0, -1.5707963, 0.0, 0.0),
+				  KDL::Frame::DH_Craig1989(0.0, -1.5707963, 0.0, 0.0).Inverse()*KDL::RigidBodyInertia(2,
+										   KDL::Vector(0.0,-0.0015515,0.0),
+										   KDL::RotationalInertia(0.0063507,0.0,0.0107804,0.0,0.0,-0.0005147))));
+
+	//joint 4
+	c.chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ, 1, 0, c.joint_inertia[3]),
+				  KDL::Frame::DH_Craig1989(0.0, 1.5707963, 0.39, 0.0),
+				  KDL::Frame::DH_Craig1989(0.0, 1.5707963, 0.39, 0.0).Inverse()*KDL::RigidBodyInertia(2,
+										   KDL::Vector(0.0,0.5216809,0.0),
+										   KDL::RotationalInertia(-1.0436952,0.0,-1.0392780,0.0,0.0,0.0005324))));
+
+	//joint 5
+	c.chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ, 1, 0, c.joint_inertia[4]),
+				  KDL::Frame::DH_Craig1989(0.0, 1.5707963, 0.0, 0.0),
+				  KDL::Frame::DH_Craig1989(0.0, 1.5707963, 0.0, 0.0).Inverse()*KDL::RigidBodyInertia(2,
+										   KDL::Vector(0.0,0.0119891,0.0),
+										   KDL::RotationalInertia(0.0036654,0.0,0.0060429,0.0,0.0,0.0004226))));
+
+	//joint 6
+	c.chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ, 1, 0, c.joint_inertia[5]),
+				  KDL::Frame::DH_Craig1989(0.0, -1.5707963, 0.0, 0.0),
+				  KDL::Frame::DH_Craig1989(0.0, -1.5707963, 0.0, 0.0).Inverse()*KDL::RigidBodyInertia(2,
+										   KDL::Vector(0.0,0.0080787,0.0),
+										   KDL::RotationalInertia(0.0010431,0.0,0.0036376,0.0,0.0,0.0000101))));
+
+    //Frame 8 - end-effector (link 8) frame - at same pose as joint 7, frame == indentity!
+	//joint 7
+	c.chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ, 1, 0, c.joint_inertia[6]),
+				   KDL::Frame::Identity(),
+				   KDL::RigidBodyInertia(2,
+    									   KDL::Vector::Zero(),
+    									   KDL::RotationalInertia(0.000001,0.0,0.0001203,0.0,0.0,0.0))));
+    //In total 8 joints (counting fixed - 0), 8 segments (counting base link 0) and 9 frames
+}
+
+void create_my_2DOF_robot(extended_kinematic_chain &c)
+{
+    int number_of_joints = 2;
+    c.joint_inertia.resize(number_of_joints);
+    for (int i = 0; i < number_of_joints; i++) c.joint_inertia[i] = 0.1;
+
+    c.joint_static_friction.resize(number_of_joints);
+    for (int i = 0; i < number_of_joints; i++) c.joint_static_friction[i] = 40.0;
     // c.joint_static_friction[0] = 500;
     // c.joint_static_friction[1] = 5;
 
-    for (int i = 0; i < NUMBER_OF_JOINTS; i++) {
+    //Here joint 0 is moving - no fixed joints !
+    //2 joints, 2 segments
+    for (int i = 0; i < number_of_joints; i++) {
+
         //last 3 inputs...input_scale, offset and joint inertia (d in paper)
         KDL::Joint joint = KDL::Joint(KDL::Joint::RotZ, 1, 0, c.joint_inertia[i]);
 
@@ -106,6 +179,8 @@ void create_my_robot(extended_kinematic_chain &c)
         //adding segments in chain
         c.chain.addSegment(segment);
     }
+    // std::cout << c.chain.getNrOfJoints() << '\n';
+    // std::cout << c.chain.getNrOfSegments() << '\n';
 }
 
 void create_my_motion_specification(motion_specification &m)
@@ -123,36 +198,37 @@ void create_my_motion_specification(motion_specification &m)
     m.external_force[1] = KDL::Wrench();
 
     KDL::Twist unit_constraint_force_x(
-            KDL::Vector(0.0, 0.0, 0.0),     // linear
+            KDL::Vector(1.0, 0.0, 0.0),     // linear
             KDL::Vector(0.0, 0.0, 0.0));    // angular
     m.end_effector_unit_constraint_forces.setColumn(0, unit_constraint_force_x);
-    m.end_effector_acceleration_energy_setpoint(0) = 0.0;
-    // KDL::Twist unit_constraint_force_y(
-    //         KDL::Vector(0.0, 1.0, 0.0),     // linear
-    //         KDL::Vector(0.0, 0.0, 0.0));    // angular
-    // m.end_effector_unit_constraint_forces.setColumn(1, unit_constraint_force_y);
-    // m.end_effector_acceleration_energy_setpoint(1) = 0.0;
-    // KDL::Twist unit_constraint_force_z(
-    //         KDL::Vector(0.0, 0.0, 1.0),     // linear
-    //         KDL::Vector(0.0, 0.0, 0.0));    // angular
-    // m.end_effector_unit_constraint_forces.setColumn(2, unit_constraint_force_z);
-    // m.end_effector_acceleration_energy_setpoint(2) = 0.0;
-    //
-    // KDL::Twist unit_constraint_force_x1(
-    //         KDL::Vector(0.0, 0.0, 0.0),     // linear
-    //         KDL::Vector(1.0, 0.0, 0.0));    // angular
-    // m.end_effector_unit_constraint_forces.setColumn(3, unit_constraint_force_x1);
-    // m.end_effector_acceleration_energy_setpoint(3) = 0.0;
-    // KDL::Twist unit_constraint_force_y1(
-    //         KDL::Vector(0.0, 0.0, 0.0),     // linear
-    //         KDL::Vector(0.0, 1.0, 0.0));    // angular
-    // m.end_effector_unit_constraint_forces.setColumn(4, unit_constraint_force_y1);
-    // m.end_effector_acceleration_energy_setpoint(4) = 0.0;
-    // KDL::Twist unit_constraint_force_z1(
-    //         KDL::Vector(0.0, 0.0, 0.0),     // linear
-    //         KDL::Vector(0.0, 0.0, 1.0));    // angular
-    // m.end_effector_unit_constraint_forces.setColumn(5, unit_constraint_force_z1);
-    // m.end_effector_acceleration_energy_setpoint(5) = 0.0;
+    m.end_effector_acceleration_energy_setpoint(0) = 1.0;
+
+    KDL::Twist unit_constraint_force_y(
+            KDL::Vector(0.0, 1.0, 0.0),     // linear
+            KDL::Vector(0.0, 0.0, 0.0));    // angular
+    m.end_effector_unit_constraint_forces.setColumn(1, unit_constraint_force_y);
+    m.end_effector_acceleration_energy_setpoint(1) = 0.0;
+    KDL::Twist unit_constraint_force_z(
+            KDL::Vector(0.0, 0.0, 1.0),     // linear
+            KDL::Vector(0.0, 0.0, 0.0));    // angular
+    m.end_effector_unit_constraint_forces.setColumn(2, unit_constraint_force_z);
+    m.end_effector_acceleration_energy_setpoint(2) = 0.0;
+
+    KDL::Twist unit_constraint_force_x1(
+            KDL::Vector(0.0, 0.0, 0.0),     // linear
+            KDL::Vector(1.0, 0.0, 0.0));    // angular
+    m.end_effector_unit_constraint_forces.setColumn(3, unit_constraint_force_x1);
+    m.end_effector_acceleration_energy_setpoint(3) = 0.0;
+    KDL::Twist unit_constraint_force_y1(
+            KDL::Vector(0.0, 0.0, 0.0),     // linear
+            KDL::Vector(0.0, 1.0, 0.0));    // angular
+    m.end_effector_unit_constraint_forces.setColumn(4, unit_constraint_force_y1);
+    m.end_effector_acceleration_energy_setpoint(4) = 0.0;
+    KDL::Twist unit_constraint_force_z1(
+            KDL::Vector(0.0, 0.0, 0.0),     // linear
+            KDL::Vector(0.0, 0.0, 1.0));    // angular
+    m.end_effector_unit_constraint_forces.setColumn(5, unit_constraint_force_z1);
+    m.end_effector_acceleration_energy_setpoint(5) = 0.0;
 
 }
 
@@ -181,7 +257,7 @@ class vereshchagin_with_friction {
         {
             // current implementation of assert is for two joints only!
             // How this should be changed if the class is moved in separate file?
-            assert(number_of_joints_ == 2);
+            // assert(number_of_joints_ == 7);
 
             const int NUMBER_OF_STEPS = 50;
 
@@ -335,13 +411,14 @@ class vereshchagin_with_friction {
 int main(int argc, char* argv[])
 {
     extended_kinematic_chain my_robot;
-    create_my_robot(my_robot);
-
-    motion_specification my_motion(NUMBER_OF_JOINTS, NUMBER_OF_SEGMENTS, NUMBER_OF_CONSTRAINTS);
+    // create_my_LWR_robot(my_robot);
+    create_my_2DOF_robot(my_robot);
+    motion_specification my_motion(my_robot.chain.getNrOfJoints(), my_robot.chain.getNrOfSegments(), NUMBER_OF_CONSTRAINTS);
     create_my_motion_specification(my_motion);
 
     //arm root acceleration
     KDL::Vector linearAcc(0.0, -9.81, 0.0); //gravitational acceleration along Y
+    // KDL::Vector linearAcc(0.0, 0.0, - 9.81); //gravitational acceleration along Z
     KDL::Vector angularAcc(0.0, 0.0, 0.0);
     KDL::Twist root_acc(linearAcc, angularAcc);
 
