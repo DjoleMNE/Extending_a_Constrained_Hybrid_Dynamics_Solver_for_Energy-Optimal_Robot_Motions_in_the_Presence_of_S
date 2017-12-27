@@ -76,7 +76,7 @@ public:
     void get_link_acceleration(Twists& xDotdot);
     void get_link_inertias(Inertias &h);
     void get_bias_force(Wrenches &u);
-
+    void get_control_torque(JntArray &tau_c);
 
 private:
     /**
@@ -112,6 +112,7 @@ private:
     Eigen::MatrixXd Um;
     Eigen::MatrixXd Vm;
     JntArray beta_N;
+    JntArray controlTorque;
     Eigen::VectorXd nu;
     Eigen::VectorXd nu_sum;
     Eigen::VectorXd Sm;

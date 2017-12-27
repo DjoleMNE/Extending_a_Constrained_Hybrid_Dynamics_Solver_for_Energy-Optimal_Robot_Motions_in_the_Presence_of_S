@@ -82,7 +82,8 @@ void create_my_LWR_robot(extended_kinematic_chain &c)
     for (int i = 0; i < number_of_joints; i++) c.joint_inertia[i] = 0.5;
 
     c.joint_static_friction.resize(number_of_joints);
-    for (int i = 0; i < number_of_joints; i++) c.joint_static_friction[i] = 40.0;
+
+    c.joint_static_friction = boost::assign::list_of(1.260 * 2)(0.956 * 2)(0.486 * 2)(0.300 * 2)(0.177 * 2) (0.177 * 2)(0.177 * 2);
 
     //Frames describe pose of the segment(base link) 0 tip, wrt joint 0 frame (inertial frame) - frame 0
     //Frame defenes pose of joint 1 in respect to joint 0 (inertial frame)
@@ -250,6 +251,7 @@ class vereshchagin_with_friction {
             frame_acceleration_.resize(number_of_frames_);
             articulated_body_inertia_.resize(number_of_frames_);
             bias_force_.resize(number_of_frames_);
+            control_tau_.resize(number_of_joints_);
             max_acc_energy = 0;
         }
 
@@ -302,8 +304,8 @@ class vereshchagin_with_friction {
                 }
 
                 //TODO
-                // select_non_moving_joints(*temp_friction_torques);
-                std::cout <<friction_torque_<< '\n';
+                // select_non_moving_joints(temp_friction_torques);
+                // std::cout <<friction_torque_<< '\n';
                 KDL::Subtract(m.feedforward_torque, friction_torque_, tau_);
                 qdd_ = m.qdd;
 
@@ -318,7 +320,8 @@ class vereshchagin_with_friction {
                  solver_.get_link_acceleration(frame_acceleration_);
                  solver_.get_link_inertias(articulated_body_inertia_);
                  solver_.get_bias_force(bias_force_);
-
+                 solver_.get_control_torque(control_tau_);
+                 std::cout << control_tau_ << '\n';
                  double acc_energy = compute_acc_energy(
                          frame_acceleration_, articulated_body_inertia_,
                          bias_force_, qdd_, tau_);
@@ -337,6 +340,8 @@ class vereshchagin_with_friction {
                 if (acc_energy > max_acc_energy){
                     max_acc_energy = acc_energy;
                     optimum_torques = resulting_set;
+                    true_control_torques = control_tau_;
+                    true_joint_acc = qdd_;
                 }
 
                 return;
@@ -380,7 +385,7 @@ class vereshchagin_with_friction {
         //     for (int i = 0; i < num_joint; i++) {
         //         //TODO check for the right 0 treshold!!!!! Best ask Sven for float inacuracy
         //         //TODO test functioon by calling it with simulation
-        //         //there is no sense calling it witout simulation
+        //         //there is no sense calling if testing is performed from stationary state
         //         //But it seams that works
         //         if (abs(init_params.jointRates(i)) > 0.01){
         //             temp_friction_torques(i) = 0;
@@ -402,9 +407,12 @@ class vereshchagin_with_friction {
         std::vector<KDL::Twist> frame_acceleration_;
         std::vector<KDL::ArticulatedBodyInertia> articulated_body_inertia_;
         KDL::Wrenches bias_force_;
+        KDL::JntArray control_tau_;
 
         double max_acc_energy;
         std::vector<double> optimum_torques;
+        KDL::JntArray true_control_torques;
+        KDL::JntArray true_joint_acc;
 
         std::ofstream plot_file;
 };

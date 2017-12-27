@@ -49,6 +49,7 @@ Solver_Vereshchagin::Solver_Vereshchagin(const Chain& chain_, Twist root_acc, un
 
     //Provide the necessary memory for computing the inverse of M0
     nu_sum.resize(nc);
+    controlTorque.resize(nj);
     M_0_inverse.resize(nc, nc);
     Um = MatrixXd::Identity(nc, nc);
     Vm = MatrixXd::Identity(nc, nc);
@@ -377,12 +378,17 @@ void Solver_Vereshchagin::final_upwards_sweep(JntArray &q_dotdot, JntArray &torq
         //final control value for torque???...nope!!!! only constraints!!!
         //Fina control tau consists of 3 parts!!!
 
-        //Code Line bellow commented by Djordje Vukcevic....to avoid overwriting ff_torques
+        //Code Line bellow commented by Djordje Vukcevic -> to avoid overwriting ff_torques
         // torques(j) = constraint_torque;
 
-        //s.constAccComp = torques(j) / s.D;
+        //Summing all contributions for total control torque of parent joints,
+        // constraint forces and nullspace forces.
+        //equation g) qdotdot[i] = D^-1(u - Z'(P*acc[i-1] + E*nu) Vereshchagin89'
+        controlTorque(j) = s.u + parent_forceProjection + constraint_torque;
+
         s.constAccComp = constraint_torque / s.D;
         s.nullspaceAccComp = s.u / s.D;
+
         //total joint space acceleration resulting from accelerations of parent joints, constraint forces and
         // nullspace forces.
         q_dotdot(j) = (s.nullspaceAccComp + parentAccComp + s.constAccComp);
@@ -390,7 +396,8 @@ void Solver_Vereshchagin::final_upwards_sweep(JntArray &q_dotdot, JntArray &torq
         //how to access this s.acc??? is it in terms of KDL??? is it used somewhere else ????
         //Is this form ok for the paper approach....or we should transformed everything in base frame????
         //s.acc is specified under segment info in h file!!
-        s.acc = s.F.Inverse(a_p + s.Z * q_dotdot(j) + s.C);//returns acceleration in link distal tip coordinates. For use needs to be transformed
+        //returns acceleration in link distal tip coordinates. For use needs to be transformed
+        s.acc = s.F.Inverse(a_p + s.Z * q_dotdot(j) + s.C);
         //Here full control tau is included and acc is due to that tau
 
         if (chain.getSegment(i - 1).getJoint().getType() != Joint::None)
@@ -409,8 +416,8 @@ void Solver_Vereshchagin::get_link_acceleration(Twists& xDotdot)
 }
 
 //this method should retur array of H's
-//H -> rigid body inertia of the segment, expressed in the segments reference frame (tip)
-//variable Type is ArticulatedBodyInertia!
+//H -> Rigid Body Inertia of the segment!!!!!!! expressed in the segments reference frame (tip)
+//but variable Type is ArticulatedBodyInertia!
 void Solver_Vereshchagin::get_link_inertias(Inertias &h)
 {
     assert(h.size() == ns + 1);
@@ -420,8 +427,6 @@ void Solver_Vereshchagin::get_link_inertias(Inertias &h)
     }
 }
 
-
-//U ...bias or external forces or both????? In Featherstone book is both!
 void Solver_Vereshchagin::get_bias_force(Wrenches &bias)
 {
     assert(bias.size() == ns + 1);
@@ -429,7 +434,12 @@ void Solver_Vereshchagin::get_bias_force(Wrenches &bias)
     for (int i = 0; i < ns + 1; i++) {
         bias[i] = results[i].U;
     }
+}
 
+void Solver_Vereshchagin::get_control_torque(JntArray &tau_c)
+{
+    assert(tau_c.rows() == nj);
+    tau_c = controlTorque;
 }
 
 }//namespace
