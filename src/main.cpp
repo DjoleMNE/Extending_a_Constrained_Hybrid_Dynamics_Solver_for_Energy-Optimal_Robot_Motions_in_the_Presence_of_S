@@ -257,9 +257,9 @@ class vereshchagin_with_friction {
         {
             // current implementation of assert is for two joints only!
             // How this should be changed if the class is moved in separate file?
-            // assert(number_of_joints_ == 7);
+            // assert(number_of_joints_ == 2);
 
-            const int NUMBER_OF_STEPS = 50;
+            const int NUMBER_OF_STEPS = 2;
 
             KDL::JntArray initial_friction (number_of_joints_);
 
@@ -269,7 +269,7 @@ class vereshchagin_with_friction {
             //Define resolution(step value) for each joint
             std::vector<double> resolution;
             for (int i = 0; i < number_of_joints_; i++){
-                resolution.push_back((2 * initial_friction(i)) / (1.0 * NUMBER_OF_STEPS));
+                resolution.push_back(2 * initial_friction(i));
             }
 
             plot_file.open ("/home/djole/Downloads/Master/R_&_D/KDL_GIT/Testing_repo/src/Simulation/plot_data.txt");
@@ -280,6 +280,7 @@ class vereshchagin_with_friction {
                 if(i != number_of_joints_) plot_file << optimum_torques[i] <<" ";
                 else plot_file << max_acc_energy;
             }
+            // std::cout << max_acc_energy << '\n';
             plot_file.close();
         }
 
@@ -302,6 +303,7 @@ class vereshchagin_with_friction {
 
                 //TODO
                 // select_non_moving_joints(*temp_friction_torques);
+                std::cout <<friction_torque_<< '\n';
                 KDL::Subtract(m.feedforward_torque, friction_torque_, tau_);
                 qdd_ = m.qdd;
 
@@ -331,6 +333,7 @@ class vereshchagin_with_friction {
                     }
                 }
 
+                // Choose maximum value of Gauss function
                 if (acc_energy > max_acc_energy){
                     max_acc_energy = acc_energy;
                     optimum_torques = resulting_set;
@@ -340,7 +343,7 @@ class vereshchagin_with_friction {
             }
 
             else {
-               for (int i = 0; i <= steps; i++){
+               for (int i = 0; i < steps; i++){
                    resulting_set[joint_index] = -initial_friction(joint_index) +  (resolution[joint_index] * i);
                    iterate_over_torques(m, initial_friction, resolution, joint_index + 1, steps, resulting_set);
                }
@@ -371,7 +374,6 @@ class vereshchagin_with_friction {
 
             return acc_energy_joint + acc_energy_segment;
         }
-
 
         // void select_non_moving_joints(KDL::JntArray &temp_friction_torques){
         //
@@ -411,14 +413,14 @@ class vereshchagin_with_friction {
 int main(int argc, char* argv[])
 {
     extended_kinematic_chain my_robot;
-    // create_my_LWR_robot(my_robot);
-    create_my_2DOF_robot(my_robot);
+    create_my_LWR_robot(my_robot);
+    // create_my_2DOF_robot(my_robot);
     motion_specification my_motion(my_robot.chain.getNrOfJoints(), my_robot.chain.getNrOfSegments(), NUMBER_OF_CONSTRAINTS);
     create_my_motion_specification(my_motion);
 
     //arm root acceleration
-    KDL::Vector linearAcc(0.0, -9.81, 0.0); //gravitational acceleration along Y
-    // KDL::Vector linearAcc(0.0, 0.0, - 9.81); //gravitational acceleration along Z
+    // KDL::Vector linearAcc(0.0, -9.81, 0.0); //gravitational acceleration along Y
+    KDL::Vector linearAcc(0.0, 0.0, - 9.81); //gravitational acceleration along Z
     KDL::Vector angularAcc(0.0, 0.0, 0.0);
     KDL::Twist root_acc(linearAcc, angularAcc);
 
