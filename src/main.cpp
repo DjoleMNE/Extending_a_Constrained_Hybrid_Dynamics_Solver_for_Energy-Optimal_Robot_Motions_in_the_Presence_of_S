@@ -22,6 +22,7 @@ SOFTWARE.
 */
 
 #include <solver_vereshchagin.hpp>
+#include <kdl/chainidsolver_recursive_newton_euler.hpp>
 #include <kdl/framevel.hpp>
 #include <kdl/frames_io.hpp>
 #include <kdl/framevel_io.hpp>
@@ -37,7 +38,7 @@ SOFTWARE.
 
 // const int NUMBER_OF_JOINTS = 2;
 // const int NUMBER_OF_SEGMENTS = 2;
-const int NUMBER_OF_CONSTRAINTS = 6;
+const int NUMBER_OF_CONSTRAINTS = 1;
 
 class extended_kinematic_chain
 {
@@ -82,7 +83,7 @@ void create_my_LWR_robot(extended_kinematic_chain &c)
     for (int i = 0; i < number_of_joints; i++) c.joint_inertia[i] = 0.5;
 
     c.joint_static_friction.resize(number_of_joints);
-
+    // for (int i = 0; i < number_of_joints; i++) c.joint_static_friction[i] = 40.0;
     c.joint_static_friction = boost::assign::list_of(1.260 * 2)(0.956 * 2)(0.486 * 2)(0.300 * 2)(0.177 * 2) (0.177 * 2)(0.177 * 2);
 
     //Frames describe pose of the segment(base link) 0 tip, wrt joint 0 frame (inertial frame) - frame 0
@@ -90,7 +91,6 @@ void create_my_LWR_robot(extended_kinematic_chain &c)
     //joint 0
 	// c.chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::None),
 	// 			  KDL::Frame::DH_Craig1989(0.0, 0.0, 0.31, 0.0)));
-
 
 	//joint 1
 	c.chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ, 1, 0, c.joint_inertia[0]),
@@ -186,50 +186,64 @@ void create_my_2DOF_robot(extended_kinematic_chain &c)
 
 void create_my_motion_specification(motion_specification &m)
 {
+    int number_of_joints = m.q.rows();
+    int number_of_segments = m.external_force.size();
+
     m.q(0) = M_PI / 2.0;
     m.q(1) = M_PI / 6.0;
+    // m.q(0) = 0.0;
+    // m.q(1) = 0.0;
 
-    m.qd(0) = 0.0;
-    m.qd(1) = 0.0;
+    for (int i = 2; i < number_of_joints; i++) m.q(i) = 0.0;
+    for (int i = 0; i < number_of_joints; i++) m.qd(i) = 0.0;
+    for (int i = 0; i < number_of_joints; i++) m.qdd(i) = 0.0;
+    for (int i = 0; i < number_of_joints; i++) m.feedforward_torque(i) = 0.0;
 
-    m.feedforward_torque(0) = 0.0;
-    m.feedforward_torque(1) = 0.0;
+    // //external forces on the arm
+    for (int i = 0; i < number_of_segments - 1; i++) {
+        KDL::Wrench externalForce(
+            KDL::Vector(0.0, 0.0, 0.0), //Force
+            KDL::Vector(0.0, 0.0, 0.0)); //Torque
+        m.external_force[i] = externalForce;
+    }
 
-    m.external_force[0] = KDL::Wrench();
-    m.external_force[1] = KDL::Wrench();
+    KDL::Wrench externalForceEE(
+        KDL::Vector(0.0, -1.0, 0.0), //Force
+        KDL::Vector(0.0, 0.0, 0.0));//Torque
+    m.external_force[number_of_segments - 1] = externalForceEE;
 
     KDL::Twist unit_constraint_force_x(
-            KDL::Vector(1.0, 0.0, 0.0),     // linear
+            KDL::Vector(0.0, 0.0, 0.0),     // linear
             KDL::Vector(0.0, 0.0, 0.0));    // angular
     m.end_effector_unit_constraint_forces.setColumn(0, unit_constraint_force_x);
-    m.end_effector_acceleration_energy_setpoint(0) = 1.0;
-
-    KDL::Twist unit_constraint_force_y(
-            KDL::Vector(0.0, 1.0, 0.0),     // linear
-            KDL::Vector(0.0, 0.0, 0.0));    // angular
-    m.end_effector_unit_constraint_forces.setColumn(1, unit_constraint_force_y);
-    m.end_effector_acceleration_energy_setpoint(1) = 0.0;
-    KDL::Twist unit_constraint_force_z(
-            KDL::Vector(0.0, 0.0, 1.0),     // linear
-            KDL::Vector(0.0, 0.0, 0.0));    // angular
-    m.end_effector_unit_constraint_forces.setColumn(2, unit_constraint_force_z);
-    m.end_effector_acceleration_energy_setpoint(2) = 0.0;
-
-    KDL::Twist unit_constraint_force_x1(
-            KDL::Vector(0.0, 0.0, 0.0),     // linear
-            KDL::Vector(1.0, 0.0, 0.0));    // angular
-    m.end_effector_unit_constraint_forces.setColumn(3, unit_constraint_force_x1);
-    m.end_effector_acceleration_energy_setpoint(3) = 0.0;
-    KDL::Twist unit_constraint_force_y1(
-            KDL::Vector(0.0, 0.0, 0.0),     // linear
-            KDL::Vector(0.0, 1.0, 0.0));    // angular
-    m.end_effector_unit_constraint_forces.setColumn(4, unit_constraint_force_y1);
-    m.end_effector_acceleration_energy_setpoint(4) = 0.0;
-    KDL::Twist unit_constraint_force_z1(
-            KDL::Vector(0.0, 0.0, 0.0),     // linear
-            KDL::Vector(0.0, 0.0, 1.0));    // angular
-    m.end_effector_unit_constraint_forces.setColumn(5, unit_constraint_force_z1);
-    m.end_effector_acceleration_energy_setpoint(5) = 0.0;
+    m.end_effector_acceleration_energy_setpoint(0) = 0.0;
+    //
+    // KDL::Twist unit_constraint_force_y(
+    //         KDL::Vector(0.0, 1.0, 0.0),     // linear
+    //         KDL::Vector(0.0, 0.0, 0.0));    // angular
+    // m.end_effector_unit_constraint_forces.setColumn(1, unit_constraint_force_y);
+    // m.end_effector_acceleration_energy_setpoint(1) = 0.0;
+    // KDL::Twist unit_constraint_force_z(
+    //         KDL::Vector(0.0, 0.0, 1.0),     // linear
+    //         KDL::Vector(0.0, 0.0, 0.0));    // angular
+    // m.end_effector_unit_constraint_forces.setColumn(2, unit_constraint_force_z);
+    // m.end_effector_acceleration_energy_setpoint(2) = 0.0;
+    //
+    // KDL::Twist unit_constraint_force_x1(
+    //         KDL::Vector(0.0, 0.0, 0.0),     // linear
+    //         KDL::Vector(1.0, 0.0, 0.0));    // angular
+    // m.end_effector_unit_constraint_forces.setColumn(3, unit_constraint_force_x1);
+    // m.end_effector_acceleration_energy_setpoint(3) = 0.0;
+    // KDL::Twist unit_constraint_force_y1(
+    //         KDL::Vector(0.0, 0.0, 0.0),     // linear
+    //         KDL::Vector(0.0, 1.0, 0.0));    // angular
+    // m.end_effector_unit_constraint_forces.setColumn(4, unit_constraint_force_y1);
+    // m.end_effector_acceleration_energy_setpoint(4) = 0.0;
+    // KDL::Twist unit_constraint_force_z1(
+    //         KDL::Vector(0.0, 0.0, 0.0),     // linear
+    //         KDL::Vector(0.0, 0.0, 1.0));    // angular
+    // m.end_effector_unit_constraint_forces.setColumn(5, unit_constraint_force_z1);
+    // m.end_effector_acceleration_energy_setpoint(5) = 0.0;
 
 }
 
@@ -255,7 +269,7 @@ class vereshchagin_with_friction {
             max_acc_energy = 0;
         }
 
-        void solve(motion_specification &m)
+        KDL::JntArray solve(motion_specification &m)
         {
             // current implementation of assert is for two joints only!
             // How this should be changed if the class is moved in separate file?
@@ -284,6 +298,8 @@ class vereshchagin_with_friction {
             }
             // std::cout << max_acc_energy << '\n';
             plot_file.close();
+            // std::cout << true_joint_acc << '\n';
+            return true_control_torques;
         }
 
     private:
@@ -321,7 +337,7 @@ class vereshchagin_with_friction {
                  solver_.get_link_inertias(articulated_body_inertia_);
                  solver_.get_bias_force(bias_force_);
                  solver_.get_control_torque(control_tau_);
-                 std::cout << control_tau_ << '\n';
+
                  double acc_energy = compute_acc_energy(
                          frame_acceleration_, articulated_body_inertia_,
                          bias_force_, qdd_, tau_);
@@ -428,12 +444,52 @@ int main(int argc, char* argv[])
 
     //arm root acceleration
     // KDL::Vector linearAcc(0.0, -9.81, 0.0); //gravitational acceleration along Y
-    KDL::Vector linearAcc(0.0, 0.0, - 9.81); //gravitational acceleration along Z
+    KDL::Vector linearAcc(0.0, 0.0, -9.81); //gravitational acceleration along Z
     KDL::Vector angularAcc(0.0, 0.0, 0.0);
     KDL::Twist root_acc(linearAcc, angularAcc);
 
-    vereshchagin_with_friction solver(my_robot, root_acc, NUMBER_OF_CONSTRAINTS);
-    solver.solve(my_motion);
+    vereshchagin_with_friction extended_solver(my_robot, root_acc, NUMBER_OF_CONSTRAINTS);
+    KDL::JntArray control_torque = extended_solver.solve(my_motion);
+    std::cout << "Extended Vereshchagin solver" << '\n';
+    std::cout << control_torque << '\n';
+    std::cout << " " << '\n';
+    KDL::Solver_Vereshchagin ver_solver(
+                            my_robot.chain,
+                            KDL::Twist(
+                                KDL::Vector(0.0, 0.0, -9.81),
+                                KDL::Vector(0.0, 0.0, 0.0)),
+                            NUMBER_OF_CONSTRAINTS);
+
+    KDL::JntArray control_torque_Ver(my_robot.chain.getNrOfJoints());
+    create_my_motion_specification(my_motion);
+    int result = ver_solver.CartToJnt(
+                 my_motion.q, my_motion.qd, my_motion.qdd,
+                 my_motion.end_effector_unit_constraint_forces,       // alpha
+                 my_motion.end_effector_acceleration_energy_setpoint, // beta
+                 my_motion.external_force,
+                 my_motion.feedforward_torque); // without friction
+
+    assert(result == 0);
+
+    ver_solver.get_control_torque(control_torque_Ver);
+    std::cout << "Original Vereshchagin solver" << '\n';
+    std::cout << control_torque_Ver << '\n';
+    std::cout << " " << '\n';
+
+    KDL::ChainIdSolver_RNE RNE_idsolver(my_robot.chain, KDL::Vector(0.0, 0.0, -9.81));
+    KDL::JntArray control_torque_RNE(my_robot.chain.getNrOfJoints());
+    create_my_motion_specification(my_motion);
+    
+    int result2 = RNE_idsolver.CartToJnt(
+                        my_motion.q,
+                        my_motion.qd,
+                        my_motion.qdd,
+                        my_motion.external_force,
+                        control_torque_RNE);
+    assert(result2 == 0);
+
+    std::cout << "Recursive Newton Euler solver" << '\n';
+    std::cout << control_torque_RNE << '\n';
 
 	return 0;
 }
