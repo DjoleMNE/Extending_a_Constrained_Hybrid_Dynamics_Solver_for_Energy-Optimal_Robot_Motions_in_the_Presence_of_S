@@ -264,7 +264,7 @@ void Solver_Vereshchagin::downwards_sweep(const Jacobian& alfa, const JntArray &
 
             //u=(Q-Z(R+PC)=sum of external forces along the joint axes,
             //R are the forces comming from the children,
-            //Q is taken zero (do we need to take the previous calculated torques?   //maybe for us it friction input ???
+            //Q is taken zero (do we need to take the previous calculated torques?   
 
             //projection of coriolis and centrepital forces into joint subspace (0 0 Z)
             s.totalBias = -dot(s.Z, s.R + s.PC);

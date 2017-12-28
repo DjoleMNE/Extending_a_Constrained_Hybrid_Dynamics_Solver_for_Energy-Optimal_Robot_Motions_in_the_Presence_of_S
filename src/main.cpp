@@ -32,9 +32,12 @@ SOFTWARE.
 #include <fstream>
 #include <time.h>
 #include <cmath>
-#include <boost/assign/list_of.hpp>
 #include <stdlib.h>     /* abs */
-
+#include <chrono>
+#include <kdl_parser/kdl_parser.hpp>
+#include <urdf/model.h>
+using nanos = std::chrono::nanoseconds;
+using get_time = std::chrono::steady_clock;
 
 // const int NUMBER_OF_JOINTS = 2;
 // const int NUMBER_OF_SEGMENTS = 2;
@@ -75,6 +78,38 @@ class motion_specification
         KDL::Wrenches external_force;
 };
 
+int create_my_5DOF_robot(extended_kinematic_chain &c)
+{
+    int number_of_joints = 5;
+
+    c.joint_inertia.resize(number_of_joints);
+    for (int i = 0; i < number_of_joints; i++) c.joint_inertia[i] = 0.3;
+
+    c.joint_static_friction.resize(number_of_joints);
+    // for (int i = 0; i < number_of_joints; i++) c.joint_static_friction[i] = 40.0;
+    c.joint_static_friction = {1.260, 0.956, 0.486, 0.300, 0.177, 0.177, 0.177};
+
+    //Extract KDL tree from URDF file
+    KDL::Tree yb_tree;
+    urdf::Model yb_model;
+
+    if (!yb_model.initFile("/home/djole/Downloads/Master/R_&_D/KDL_GIT/Testing_repo/urdf/youbot_arm_only.urdf")){
+        std::cout << "ERROR: Failed to parse urdf robot model" << '\n';
+        return 0;
+    }
+
+    if (!kdl_parser::treeFromUrdfModel(yb_model, yb_tree)){
+        std::cout << "ERROR: Failed to construct kdl tree" << '\n';
+        return 0;
+    }
+
+    //Extract KDL chain from KDL tree
+    yb_tree.getChain("arm_link_0", "arm_link_5", c.chain);
+
+    //In total 5 joints (NOT counting fixed - 0), 5 segments (NOT counting base link 0) and 6 frames
+    return 1;
+}
+
 void create_my_LWR_robot(extended_kinematic_chain &c)
 {
     int number_of_joints = 7;
@@ -83,8 +118,8 @@ void create_my_LWR_robot(extended_kinematic_chain &c)
     for (int i = 0; i < number_of_joints; i++) c.joint_inertia[i] = 0.5;
 
     c.joint_static_friction.resize(number_of_joints);
-    // for (int i = 0; i < number_of_joints; i++) c.joint_static_friction[i] = 40.0;
-    c.joint_static_friction = boost::assign::list_of(1.260 * 2)(0.956 * 2)(0.486 * 2)(0.300 * 2)(0.177 * 2) (0.177 * 2)(0.177 * 2);
+    for (int i = 0; i < number_of_joints; i++) c.joint_static_friction[i] = 10.0;
+    // c.joint_static_friction = {1.260 * 2, 0.956 * 2, 0.486 * 2, 0.300 * 2, 0.177 * 2, 0.177 * 2, 0.177 * 2};
 
     //Frames describe pose of the segment(base link) 0 tip, wrt joint 0 frame (inertial frame) - frame 0
     //Frame defenes pose of joint 1 in respect to joint 0 (inertial frame)
@@ -142,6 +177,7 @@ void create_my_LWR_robot(extended_kinematic_chain &c)
     									   KDL::Vector::Zero(),
     									   KDL::RotationalInertia(0.000001,0.0,0.0001203,0.0,0.0,0.0))));
     //In total 8 joints (counting fixed - 0), 8 segments (counting base link 0) and 9 frames
+    //In total 7 joints (NOT counting fixed - 0), 7 segments (NOT counting base link 0) and 8 frames
 }
 
 void create_my_2DOF_robot(extended_kinematic_chain &c)
@@ -266,10 +302,15 @@ class vereshchagin_with_friction {
             articulated_body_inertia_.resize(number_of_frames_);
             bias_force_.resize(number_of_frames_);
             control_tau_.resize(number_of_joints_);
+            true_control_torques.resize(number_of_joints_);
+            true_joint_acc.resize(number_of_joints_);
             max_acc_energy = 0;
         }
 
-        KDL::JntArray solve(motion_specification &m)
+        KDL::JntArray true_control_torques;
+        KDL::JntArray true_joint_acc;
+
+        void solve(motion_specification &m)
         {
             // current implementation of assert is for two joints only!
             // How this should be changed if the class is moved in separate file?
@@ -281,6 +322,9 @@ class vereshchagin_with_friction {
 
             for (int i = 0; i < number_of_joints_; i++) initial_friction(i) = chain_.joint_static_friction[i];
             std::vector<double> resulting_torque_set(number_of_joints_);
+            //TODO
+            // select_non_moving_joints(m, resulting_torque_set);
+            // std::cout <<friction_torque_<< '\n';
 
             //Define resolution(step value) for each joint
             std::vector<double> resolution;
@@ -299,7 +343,6 @@ class vereshchagin_with_friction {
             // std::cout << max_acc_energy << '\n';
             plot_file.close();
             // std::cout << true_joint_acc << '\n';
-            return true_control_torques;
         }
 
     private:
@@ -319,14 +362,11 @@ class vereshchagin_with_friction {
                     friction_torque_(j) = resulting_set[j];
                 }
 
-                //TODO
-                // select_non_moving_joints(temp_friction_torques);
-                // std::cout <<friction_torque_<< '\n';
                 KDL::Subtract(m.feedforward_torque, friction_torque_, tau_);
                 qdd_ = m.qdd;
 
                 int result = solver_.CartToJnt(
-                             m.q, m.qd, qdd_, //qdd_ is overwritten by accual/resulting acceleration
+                             m.q, m.qd, qdd_, //qdd_ is overwritten by accual\resulting acceleration
                              m.end_effector_unit_constraint_forces,       // alpha
                              m.end_effector_acceleration_energy_setpoint, // beta
                              m.external_force,
@@ -396,21 +436,21 @@ class vereshchagin_with_friction {
             return acc_energy_joint + acc_energy_segment;
         }
 
-        // void select_non_moving_joints(KDL::JntArray &temp_friction_torques){
-        //
-        //     for (int i = 0; i < num_joint; i++) {
-        //         //TODO check for the right 0 treshold!!!!! Best ask Sven for float inacuracy
-        //         //TODO test functioon by calling it with simulation
-        //         //there is no sense calling if testing is performed from stationary state
-        //         //But it seams that works
-        //         if (abs(init_params.jointRates(i)) > 0.01){
-        //             temp_friction_torques(i) = 0;
-        //         }
-        //         else {
-        //             std::cout <<"Not moving!!  "<< i << " " <<temp_friction_torques(i) << '\n';
-        //         }
-        //     }
-        // }
+        void select_non_moving_joints(motion_specification &m, KDL::JntArray &temp_friction_torques){
+
+            for (int i = 0; i < number_of_joints_; i++) {
+                //TODO check for the right 0 treshold!!!!! Best ask Sven for float inacuracy
+                //TODO test functioon by calling it with simulation
+                //there is no sense calling if testing is performed from stationary state of the robot
+
+                if (abs(m.qd(i)) > 0.01){
+                    temp_friction_torques(i) = 0;
+                }
+                else {
+                    std::cout <<"Not moving!!  "<< i << " " <<temp_friction_torques(i) << '\n';
+                }
+            }
+        }
 
         KDL::JntArray tau_; // as input to original solver (sum of external feed-forward torque and friction torque), overwritten during call!
         KDL::JntArray qdd_; // as input to original solver, overwritten during call!
@@ -427,20 +467,14 @@ class vereshchagin_with_friction {
 
         double max_acc_energy;
         std::vector<double> optimum_torques;
-        KDL::JntArray true_control_torques;
-        KDL::JntArray true_joint_acc;
 
         std::ofstream plot_file;
 };
 
 
-int main(int argc, char* argv[])
+void test_3_solvers(extended_kinematic_chain &my_robot, motion_specification &motion)
 {
-    extended_kinematic_chain my_robot;
-    create_my_LWR_robot(my_robot);
-    // create_my_2DOF_robot(my_robot);
-    motion_specification my_motion(my_robot.chain.getNrOfJoints(), my_robot.chain.getNrOfSegments(), NUMBER_OF_CONSTRAINTS);
-    create_my_motion_specification(my_motion);
+    create_my_motion_specification(motion);
 
     //arm root acceleration
     // KDL::Vector linearAcc(0.0, -9.81, 0.0); //gravitational acceleration along Y
@@ -449,10 +483,17 @@ int main(int argc, char* argv[])
     KDL::Twist root_acc(linearAcc, angularAcc);
 
     vereshchagin_with_friction extended_solver(my_robot, root_acc, NUMBER_OF_CONSTRAINTS);
-    KDL::JntArray control_torque = extended_solver.solve(my_motion);
+    auto start = get_time::now(); //use auto keyword to minimize typing strokes
+    extended_solver.solve(motion);
+    auto end = get_time::now();
+    auto diff = end - start;
+
     std::cout << "Extended Vereshchagin solver" << '\n';
-    std::cout << control_torque << '\n';
+    std::cout << extended_solver.true_control_torques << '\n';
     std::cout << " " << '\n';
+    std::cout<<"Elapsed time is :  "<< std::chrono::duration_cast<nanos>(diff).count()<<" nanos "<<std::endl;
+    std::cout << " " << '\n';
+
     KDL::Solver_Vereshchagin ver_solver(
                             my_robot.chain,
                             KDL::Twist(
@@ -461,35 +502,107 @@ int main(int argc, char* argv[])
                             NUMBER_OF_CONSTRAINTS);
 
     KDL::JntArray control_torque_Ver(my_robot.chain.getNrOfJoints());
-    create_my_motion_specification(my_motion);
-    int result = ver_solver.CartToJnt(
-                 my_motion.q, my_motion.qd, my_motion.qdd,
-                 my_motion.end_effector_unit_constraint_forces,       // alpha
-                 my_motion.end_effector_acceleration_energy_setpoint, // beta
-                 my_motion.external_force,
-                 my_motion.feedforward_torque); // without friction
+    create_my_motion_specification(motion);
 
-    assert(result == 0);
+    auto start2 = get_time::now();
+    int result2 = ver_solver.CartToJnt(
+                 motion.q, motion.qd, motion.qdd,
+                 motion.end_effector_unit_constraint_forces,       // alpha
+                 motion.end_effector_acceleration_energy_setpoint, // beta
+                 motion.external_force,
+                 motion.feedforward_torque); // without friction
+    assert(result2 == 0);
+    auto end2 = get_time::now();
+    auto diff2 = end2 - start2;
 
     ver_solver.get_control_torque(control_torque_Ver);
     std::cout << "Original Vereshchagin solver" << '\n';
     std::cout << control_torque_Ver << '\n';
     std::cout << " " << '\n';
+    std::cout<<"Elapsed time is :  "<< std::chrono::duration_cast<nanos>(diff2).count()<<" nanos "<<std::endl;
+    std::cout << " " << '\n';
 
     KDL::ChainIdSolver_RNE RNE_idsolver(my_robot.chain, KDL::Vector(0.0, 0.0, -9.81));
     KDL::JntArray control_torque_RNE(my_robot.chain.getNrOfJoints());
-    create_my_motion_specification(my_motion);
-    
-    int result2 = RNE_idsolver.CartToJnt(
-                        my_motion.q,
-                        my_motion.qd,
-                        my_motion.qdd,
-                        my_motion.external_force,
-                        control_torque_RNE);
-    assert(result2 == 0);
 
+    create_my_motion_specification(motion);
+
+    auto start3 = get_time::now();
+    int result3 = RNE_idsolver.CartToJnt(
+                        motion.q,
+                        motion.qd,
+                        motion.qdd,
+                        motion.external_force,
+                        control_torque_RNE);
+    assert(result3 == 0);
+    auto end3 = get_time::now();
+    auto diff3 = end3 - start3;
     std::cout << "Recursive Newton Euler solver" << '\n';
     std::cout << control_torque_RNE << '\n';
+    std::cout << " " << '\n';
+    std::cout<<"Elapsed time is :  "<< std::chrono::duration_cast<nanos>(diff3).count()<<" nanos "<<std::endl;
+    std::cout << " " << '\n';
+}
+
+void test_2_models_ID(extended_kinematic_chain &robot_1, extended_kinematic_chain &robot_2, motion_specification &motion_1, motion_specification &motion_2)
+{
+    create_my_motion_specification(motion_1);
+    //arm root acceleration
+    KDL::Vector linearAcc(0.0, 0.0, -9.81); //gravitational acceleration along Z
+    KDL::Vector angularAcc(0.0, 0.0, 0.0);
+    KDL::Twist root_acc(linearAcc, angularAcc);
+
+    vereshchagin_with_friction extended_solver_1(robot_1, root_acc, NUMBER_OF_CONSTRAINTS);
+    auto start = get_time::now(); //use auto keyword to minimize typing strokes
+    extended_solver_1.solve(motion_1);
+    auto end = get_time::now();
+    auto diff = end - start;
+
+    std::cout << "Robot 1 - computed joint accelerations" << '\n';
+    std::cout << extended_solver_1.true_joint_acc << '\n';
+    std::cout << " " << '\n';
+    std::cout<<"Elapsed time is :  "<< std::chrono::duration_cast<nanos>(diff).count()<<" nanos "<<std::endl;
+    std::cout << " " << '\n';
+
+    create_my_motion_specification(motion_2);
+
+    vereshchagin_with_friction extended_solver_2(robot_2, root_acc, NUMBER_OF_CONSTRAINTS);
+    auto start2 = get_time::now(); //use auto keyword to minimize typing strokes
+    extended_solver_2.solve(motion_2);
+    auto end2 = get_time::now();
+    auto diff2 = end2 - start2;
+
+    std::cout << "Robot 2 - computed joint accelerations" << '\n';
+    std::cout << extended_solver_2.true_joint_acc << '\n';
+    std::cout << " " << '\n';
+    std::cout<<"Elapsed time is :  "<< std::chrono::duration_cast<nanos>(diff2).count()<<" nanos "<<std::endl;
+    std::cout << " " << '\n';
+}
+
+int main(int argc, char* argv[])
+{
+    //extended_kinematic_chain my_robot;
+    // create_my_2DOF_robot(my_robot);
+
+    extended_kinematic_chain five_DOF_robot;
+    int result = create_my_5DOF_robot(five_DOF_robot);
+    assert(result == 1);
+    motion_specification five_DOF_motion(five_DOF_robot.chain.getNrOfJoints(), five_DOF_robot.chain.getNrOfSegments(), NUMBER_OF_CONSTRAINTS);
+
+    extended_kinematic_chain LWR_robot;
+    create_my_LWR_robot(LWR_robot);
+    motion_specification LWR_motion(LWR_robot.chain.getNrOfJoints(), LWR_robot.chain.getNrOfSegments(), NUMBER_OF_CONSTRAINTS);
+
+    // std::cout << "Testing the 5DOF robot model with 3 different solvers" << '\n'<<std::endl;
+    // test_3_solvers(five_DOF_robot, five_DOF_motion);
+
+    // std::cout << " " << '\n'<<std::endl;
+
+    // std::cout << "Testing the LWR robot model with 3 different solvers" << '\n'<<std::endl;
+    // test_3_solvers(LWR_robot, LWR_motion);
+
+    std::cout << "Testing 2 robot models with the same extended Vereshchagin solver" << '\n'<<std::endl;
+    test_2_models_ID(five_DOF_robot, LWR_robot, five_DOF_motion, LWR_motion);
 
 	return 0;
 }
