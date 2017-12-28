@@ -93,7 +93,7 @@ int create_my_5DOF_robot(extended_kinematic_chain &c)
     KDL::Tree yb_tree;
     urdf::Model yb_model;
 
-    if (!yb_model.initFile("/home/djole/Downloads/Master/R_&_D/KDL_GIT/Testing_repo/urdf/youbot_arm_only.urdf")){
+    if (!yb_model.initFile("../urdf/youbot_arm_only.urdf")){
         std::cout << "ERROR: Failed to parse urdf robot model" << '\n';
         return 0;
     }
@@ -438,9 +438,8 @@ class vereshchagin_with_friction {
 
         void solve(motion_specification &m)
         {
-            // current implementation of assert is for two joints only!
-            // How this should be changed if the class is moved in separate file?
-            // assert(number_of_joints_ == 2);
+
+            assert(number_of_joints_ == m.q.rows());
 
             const int NUMBER_OF_STEPS = 2;
 
@@ -449,7 +448,7 @@ class vereshchagin_with_friction {
             for (int i = 0; i < number_of_joints_; i++) initial_friction(i) = chain_.joint_static_friction[i];
             std::vector<double> resulting_torque_set(number_of_joints_);
             //TODO
-            // select_non_moving_joints(m, resulting_torque_set);
+            // select_non_moving_joints(m, initial_friction);
             // std::cout <<friction_torque_<< '\n';
 
             //Define resolution(step value) for each joint
@@ -458,12 +457,12 @@ class vereshchagin_with_friction {
                 resolution.push_back(2 * initial_friction(i));
             }
 
-            plot_file.open ("/home/djole/Downloads/Master/R_&_D/KDL_GIT/Testing_repo/src/Simulation/plot_data.txt");
+            plot_file.open ("../src/Simulation/plot_data.txt");
 
             iterate_over_torques(m, initial_friction, resolution, 0, NUMBER_OF_STEPS, resulting_torque_set);
 
             for (int i = 0; i < number_of_joints_ + 1; i++) {
-                if(i != number_of_joints_) plot_file << optimum_torques[i] <<" ";
+                if(i != number_of_joints_) plot_file << optimum_friction_tau_[i] <<" ";
                 else plot_file << max_acc_energy;
             }
             // std::cout << max_acc_energy << '\n';
@@ -488,25 +487,28 @@ class vereshchagin_with_friction {
                     friction_torque_(j) = resulting_set[j];
                 }
 
+                KDL::SetToZero(tau_);
                 KDL::Subtract(m.feedforward_torque, friction_torque_, tau_);
+
                 qdd_ = m.qdd;
 
                 int result = solver_.CartToJnt(
-                             m.q, m.qd, qdd_, //qdd_ is overwritten by accual\resulting acceleration
+                             m.q, m.qd, qdd_, //qdd_ is overwritten by actual\resulting acceleration
                              m.end_effector_unit_constraint_forces,       // alpha
                              m.end_effector_acceleration_energy_setpoint, // beta
                              m.external_force,
                              tau_);  // tau_ is overwritten!
                      assert(result == 0);
 
-                 solver_.get_link_acceleration(frame_acceleration_);
-                 solver_.get_link_inertias(articulated_body_inertia_);
-                 solver_.get_bias_force(bias_force_);
-                 solver_.get_control_torque(control_tau_);
+                solver_.get_link_acceleration(frame_acceleration_);
+                solver_.get_link_inertias(articulated_body_inertia_);
+                solver_.get_bias_force(bias_force_);
+                solver_.get_control_torque(control_tau_);
 
-                 double acc_energy = compute_acc_energy(
-                         frame_acceleration_, articulated_body_inertia_,
-                         bias_force_, qdd_, tau_);
+                double acc_energy = compute_acc_energy(
+                                frame_acceleration_,
+                                articulated_body_inertia_,
+                                bias_force_, qdd_, tau_);
 
                 //write data in the file
                 for (int k = 0; k < number_of_joints_ + 1; k++){
@@ -521,7 +523,7 @@ class vereshchagin_with_friction {
                 // Choose maximum value of Gauss function
                 if (acc_energy > max_acc_energy){
                     max_acc_energy = acc_energy;
-                    optimum_torques = resulting_set;
+                    optimum_friction_tau_ = resulting_set;
                     true_control_torques = control_tau_;
                     true_joint_acc = qdd_;
                 }
@@ -592,7 +594,7 @@ class vereshchagin_with_friction {
         KDL::JntArray control_tau_;
 
         double max_acc_energy;
-        std::vector<double> optimum_torques;
+        std::vector<double> optimum_friction_tau_;
 
         std::ofstream plot_file;
 };
@@ -618,7 +620,7 @@ void test_3_solvers(extended_kinematic_chain &my_robot, motion_specification &mo
     std::cout << "Joint torques:        "<<extended_solver.true_control_torques << '\n';
     std::cout << " " << '\n';
     std::cout<<"Elapsed time:  "<< std::chrono::duration_cast<nanos>(diff).count()<<" nanos "<<std::endl;
-    std::cout << " " << '\n';
+    std::cout << " " << '\n'<<std::endl;
 
     KDL::Solver_Vereshchagin ver_solver(
                             my_robot.chain,
@@ -646,7 +648,7 @@ void test_3_solvers(extended_kinematic_chain &my_robot, motion_specification &mo
     std::cout << "Joint torques:        "<<control_torque_Ver << '\n';
     std::cout << " " << '\n';
     std::cout<<"Elapsed time:  "<< std::chrono::duration_cast<nanos>(diff2).count()<<" nanos "<<std::endl;
-    std::cout << " " << '\n';
+    std::cout << " " << '\n'<<std::endl;
 
     KDL::ChainIdSolver_RNE RNE_idsolver(my_robot.chain, KDL::Vector(0.0, 0.0, -9.81));
     KDL::JntArray control_torque_RNE(my_robot.chain.getNrOfJoints());
@@ -686,7 +688,6 @@ void test_2_models_FD(extended_kinematic_chain &robot_1, extended_kinematic_chai
 
     std::cout << "Robot 1" << '\n';
     std::cout << "Joint accelerations:  "<<extended_solver_1.true_joint_acc << '\n';
-    std::cout << "Joint torques:        "<<extended_solver_1.true_control_torques << '\n';
     std::cout << " " << '\n';
     std::cout<<"Elapsed time:  "<< std::chrono::duration_cast<nanos>(diff).count()<<" nanos "<<std::endl;
     std::cout << " " << '\n';
@@ -701,7 +702,6 @@ void test_2_models_FD(extended_kinematic_chain &robot_1, extended_kinematic_chai
 
     std::cout << "Robot 2" << '\n';
     std::cout << "Joint accelerations:  "<<extended_solver_2.true_joint_acc << '\n';
-    std::cout << "Joint torques:        "<<extended_solver_2.true_control_torques << '\n';
     std::cout << " " << '\n';
     std::cout<<"Elapsed time:  "<< std::chrono::duration_cast<nanos>(diff2).count()<<" nanos "<<std::endl;
     std::cout << " " << '\n';
@@ -722,7 +722,6 @@ void test_2_models_ID(extended_kinematic_chain &robot_1, extended_kinematic_chai
     auto diff = end - start;
 
     std::cout << "Robot 1" << '\n';
-    std::cout << "Joint accelerations:  "<<extended_solver_1.true_joint_acc << '\n';
     std::cout << "Joint torques:        "<<extended_solver_1.true_control_torques << '\n';
     std::cout << " " << '\n';
     std::cout<<"Elapsed time:  "<< std::chrono::duration_cast<nanos>(diff).count()<<" nanos "<<std::endl;
@@ -737,7 +736,6 @@ void test_2_models_ID(extended_kinematic_chain &robot_1, extended_kinematic_chai
     auto diff2 = end2 - start2;
 
     std::cout << "Robot 2" << '\n';
-    std::cout << "Joint accelerations:  "<<extended_solver_2.true_joint_acc << '\n';
     std::cout << "Joint torques:        "<<extended_solver_2.true_control_torques << '\n';
     std::cout << " " << '\n';
     std::cout<<"Elapsed time:  "<< std::chrono::duration_cast<nanos>(diff2).count()<<" nanos "<<std::endl;

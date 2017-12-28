@@ -264,7 +264,7 @@ void Solver_Vereshchagin::downwards_sweep(const Jacobian& alfa, const JntArray &
 
             //u=(Q-Z(R+PC)=sum of external forces along the joint axes,
             //R are the forces comming from the children,
-            //Q is taken zero (do we need to take the previous calculated torques?   
+            //Q is taken zero (do we need to take the previous calculated torques?
 
             //projection of coriolis and centrepital forces into joint subspace (0 0 Z)
             s.totalBias = -dot(s.Z, s.R + s.PC);
@@ -340,6 +340,7 @@ void Solver_Vereshchagin::final_upwards_sweep(JntArray &q_dotdot, JntArray &torq
         // = D^-1(u - Z'(P*acc[i-1] + E*nu)
         Twist a_g;
         Twist a_p;
+        
         if (i == 1)
         {
             a_p = acc_root;
