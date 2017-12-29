@@ -86,7 +86,7 @@ int create_my_5DOF_robot(extended_kinematic_chain &c)
     for (int i = 0; i < number_of_joints; i++) c.joint_inertia[i] = 0.3;
 
     c.joint_static_friction.resize(number_of_joints);
-    // for (int i = 0; i < number_of_joints; i++) c.joint_static_friction[i] = 40.0;
+    // for (int i = 0; i < number_of_joints; i++) c.joint_static_friction[i] = 5.0;
     c.joint_static_friction = {1.260, 0.956, 0.486, 0.300, 0.177, 0.177, 0.177};
 
     //Extract KDL tree from URDF file
@@ -118,8 +118,8 @@ void create_my_LWR_robot(extended_kinematic_chain &c)
     for (int i = 0; i < number_of_joints; i++) c.joint_inertia[i] = 0.5;
 
     c.joint_static_friction.resize(number_of_joints);
-    for (int i = 0; i < number_of_joints; i++) c.joint_static_friction[i] = 10.0;
-    // c.joint_static_friction = {1.260 * 2, 0.956 * 2, 0.486 * 2, 0.300 * 2, 0.177 * 2, 0.177 * 2, 0.177 * 2};
+    // for (int i = 0; i < number_of_joints; i++) c.joint_static_friction[i] = 10.0;
+    c.joint_static_friction = {1.260 * 2, 0.956 * 2, 0.486 * 2, 0.300 * 2, 0.177 * 2, 0.177 * 2, 0.177 * 2};
 
     //Frames describe pose of the segment(base link) 0 tip, wrt joint 0 frame (inertial frame) - frame 0
     //Frame defenes pose of joint 1 in respect to joint 0 (inertial frame)
@@ -188,8 +188,6 @@ void create_my_2DOF_robot(extended_kinematic_chain &c)
 
     c.joint_static_friction.resize(number_of_joints);
     for (int i = 0; i < number_of_joints; i++) c.joint_static_friction[i] = 40.0;
-    // c.joint_static_friction[0] = 500;
-    // c.joint_static_friction[1] = 5;
 
     //Here joint 0 is moving - no fixed joints !
     //2 joints, 2 segments
@@ -216,8 +214,6 @@ void create_my_2DOF_robot(extended_kinematic_chain &c)
         //adding segments in chain
         c.chain.addSegment(segment);
     }
-    // std::cout << c.chain.getNrOfJoints() << '\n';
-    // std::cout << c.chain.getNrOfSegments() << '\n';
 }
 
 void create_F_ext_motion_specification(motion_specification &m)
@@ -244,7 +240,7 @@ void create_F_ext_motion_specification(motion_specification &m)
     }
 
     KDL::Wrench externalForceEE(
-        KDL::Vector(0.0, -5.0, 0.0), //Force
+        KDL::Vector(0.0, -1.0, 0.0), //Force
         KDL::Vector(0.0, 0.0, 0.0));//Torque
     m.external_force[number_of_segments - 1] = externalForceEE;
 
@@ -757,11 +753,17 @@ int main(int argc, char* argv[])
     motion_specification LWR_motion(LWR_robot.chain.getNrOfJoints(), LWR_robot.chain.getNrOfSegments(), NUMBER_OF_CONSTRAINTS);
 
     std::cout << "Testing 5DOF robot model with 3 different solvers" << '\n'<<std::endl;
+    std::cout << "5DOF robot friction torques:        ";
+    for(int i=0; i<five_DOF_robot.chain.getNrOfJoints(); ++i)  std::cout << five_DOF_robot.joint_static_friction[i] << "  ";
+    std::cout <<'\n'<<std::endl;
     test_3_solvers(five_DOF_robot, five_DOF_motion);
 
     std::cout << " " << '\n'<<std::endl;
 
     std::cout << "Testing LWR robot model with 3 different solvers" << '\n'<<std::endl;
+    std::cout << "LWR friction torques:        ";
+    for(int i=0; i<LWR_robot.chain.getNrOfJoints(); ++i)  std::cout << LWR_robot.joint_static_friction[i] << "  ";
+    std::cout <<'\n'<<std::endl;
     test_3_solvers(LWR_robot, LWR_motion);
 
     std::cout << " " << '\n'<<std::endl;
