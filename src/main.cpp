@@ -43,6 +43,13 @@ using get_time = std::chrono::steady_clock;
 // const int NUMBER_OF_SEGMENTS = 2;
 const int NUMBER_OF_CONSTRAINTS = 6;
 
+int sign_of(double x){
+    if(x < 0.0){
+        return -1;
+    }
+    else return 1;
+}
+
 class extended_kinematic_chain
 {
     public:
@@ -87,7 +94,7 @@ int create_my_5DOF_robot(extended_kinematic_chain &c)
 
     c.joint_static_friction.resize(number_of_joints);
     // for (int i = 0; i < number_of_joints; i++) c.joint_static_friction[i] = 5.0;
-    c.joint_static_friction = {1.260, 0.956, 0.486, 0.300, 0.177, 0.177, 0.177};
+    c.joint_static_friction = {1.260, 0.956, 0.486, 0.300, 0.177};
 
     //Extract KDL tree from URDF file
     KDL::Tree yb_tree;
@@ -119,7 +126,7 @@ void create_my_LWR_robot(extended_kinematic_chain &c)
 
     c.joint_static_friction.resize(number_of_joints);
     // for (int i = 0; i < number_of_joints; i++) c.joint_static_friction[i] = 10.0;
-    c.joint_static_friction = {1.260 * 2, 0.956 * 2, 0.486 * 2, 0.300 * 2, 0.177 * 2, 0.177 * 2, 0.177 * 2};
+    c.joint_static_friction = {2.52,  1.912,  0.972,  0.6,  0.354,  0.354,  0.177};
 
     //Frames describe pose of the segment(base link) 0 tip, wrt joint 0 frame (inertial frame) - frame 0
     //Frame defenes pose of joint 1 in respect to joint 0 (inertial frame)
@@ -240,7 +247,7 @@ void create_F_ext_motion_specification(motion_specification &m)
     }
 
     KDL::Wrench externalForceEE(
-        KDL::Vector(0.0, -1.0, 0.0), //Force
+        KDL::Vector(-1.0, -1.0, 0.0), //Force
         KDL::Vector(0.0, 0.0, 0.0));//Torque
     m.external_force[number_of_segments - 1] = externalForceEE;
 
@@ -564,9 +571,6 @@ class vereshchagin_with_friction {
 
             for (int i = 0; i < number_of_joints_; i++) {
                 //TODO check for the right 0 treshold!!!!! Best ask Sven for float inacuracy
-                //TODO test functioon by calling it with simulation
-                //there is no sense calling if testing is performed from stationary state of the robot
-
                 if (abs(m.qd(i)) > 0.01){
                     temp_friction_torques(i) = 0;
                 }
@@ -596,13 +600,10 @@ class vereshchagin_with_friction {
 };
 
 
-void test_3_solvers(extended_kinematic_chain &my_robot, motion_specification &motion)
+void test_3_solvers(extended_kinematic_chain &my_robot, motion_specification &motion, bool total_effort = false)
 {
     create_F_ext_motion_specification(motion);
-
-    //arm root acceleration
-    // KDL::Vector linearAcc(0.0, -9.81, 0.0); //gravitational acceleration along Y
-    KDL::Vector linearAcc(0.0, 0.0, -9.81); //gravitational acceleration along Z
+    KDL::Vector linearAcc(0.0, 0.0, -9.81); //gravitational acceleration along Z of arm root
     KDL::Vector angularAcc(0.0, 0.0, 0.0);
     KDL::Twist root_acc(linearAcc, angularAcc);
 
@@ -642,6 +643,16 @@ void test_3_solvers(extended_kinematic_chain &my_robot, motion_specification &mo
     ver_solver.get_control_torque(control_torque_Ver);
     std::cout << "Original Vereshchagin solver" << '\n';
     std::cout << "Joint torques:        "<<control_torque_Ver << '\n';
+    if(total_effort){
+        std::vector<double> full_effort(my_robot.chain.getNrOfJoints());
+        std::cout << "Total effort:           ";
+        for(int i = 0; i < my_robot.chain.getNrOfJoints(); i++){
+            full_effort[i] = control_torque_Ver(i) + my_robot.joint_static_friction[i] * sign_of(control_torque_Ver(i));
+            std::cout <<full_effort[i] << "    ";
+        }
+        std::cout << " " << '\n';
+    }
+
     std::cout << " " << '\n';
     std::cout<<"Elapsed time:  "<< std::chrono::duration_cast<nanos>(diff2).count()<<" nanos "<<std::endl;
     std::cout << " " << '\n'<<std::endl;
@@ -663,9 +674,19 @@ void test_3_solvers(extended_kinematic_chain &my_robot, motion_specification &mo
     auto diff3 = end3 - start3;
     std::cout << "Recursive Newton Euler solver" << '\n';
     std::cout << "Joint torques:        "<<control_torque_RNE << '\n';
-    std::cout << " " << '\n';
+    if(total_effort){
+        std::vector<double> full_effort(my_robot.chain.getNrOfJoints());
+        std::cout << "Total effort:           ";
+        for(int i = 0; i < my_robot.chain.getNrOfJoints(); i++){
+            full_effort[i] = control_torque_RNE(i) + my_robot.joint_static_friction[i] * sign_of(control_torque_RNE(i));
+            std::cout <<full_effort[i] << "    ";
+        }
+        std::cout << "\n";
+    }
+
+    std::cout <<'\n';
     std::cout<<"Elapsed time:  "<< std::chrono::duration_cast<nanos>(diff3).count()<<" nanos "<<std::endl;
-    std::cout << " " << '\n';
+    std::cout <<'\n';
 }
 
 void test_2_models_FD(extended_kinematic_chain &robot_1, extended_kinematic_chain &robot_2, motion_specification &motion_1, motion_specification &motion_2)
@@ -756,15 +777,14 @@ int main(int argc, char* argv[])
     std::cout << "5DOF robot friction torques:        ";
     for(int i=0; i<five_DOF_robot.chain.getNrOfJoints(); ++i)  std::cout << five_DOF_robot.joint_static_friction[i] << "  ";
     std::cout <<'\n'<<std::endl;
-    test_3_solvers(five_DOF_robot, five_DOF_motion);
+    test_3_solvers(five_DOF_robot, five_DOF_motion, true);
 
     std::cout << " " << '\n'<<std::endl;
-
     std::cout << "Testing LWR robot model with 3 different solvers" << '\n'<<std::endl;
     std::cout << "LWR friction torques:        ";
     for(int i=0; i<LWR_robot.chain.getNrOfJoints(); ++i)  std::cout << LWR_robot.joint_static_friction[i] << "  ";
     std::cout <<'\n'<<std::endl;
-    test_3_solvers(LWR_robot, LWR_motion);
+    test_3_solvers(LWR_robot, LWR_motion, true);
 
     std::cout << " " << '\n'<<std::endl;
 
