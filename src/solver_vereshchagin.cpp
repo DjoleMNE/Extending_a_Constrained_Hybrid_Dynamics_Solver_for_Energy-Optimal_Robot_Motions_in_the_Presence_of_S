@@ -340,7 +340,7 @@ void Solver_Vereshchagin::final_upwards_sweep(JntArray &q_dotdot, JntArray &torq
         // = D^-1(u - Z'(P*acc[i-1] + E*nu)
         Twist a_g;
         Twist a_p;
-        
+
         if (i == 1)
         {
             a_p = acc_root;
@@ -416,8 +416,9 @@ void Solver_Vereshchagin::get_link_acceleration(Twists& xDotdot)
     }
 }
 
-//this method should retur array of H's
-//H -> Rigid Body Inertia of the segment!!!!!!! expressed in the segments reference frame (tip)
+
+//H -> Rigid Body Inertia of the segment!!!!!!!
+//expressed in the segments reference frame (tip)
 //but variable Type is ArticulatedBodyInertia!
 void Solver_Vereshchagin::get_link_inertias(Inertias &h)
 {
@@ -437,10 +438,10 @@ void Solver_Vereshchagin::get_bias_force(Wrenches &bias)
     }
 }
 
-void Solver_Vereshchagin::get_control_torque(JntArray &tau_c)
+void Solver_Vereshchagin::get_control_torque(JntArray &tau_control)
 {
-    assert(tau_c.rows() == controlTorque.rows());
-    tau_c = controlTorque;
+    assert(tau_control.rows() == controlTorque.rows());
+    tau_control = controlTorque;
 }
 
 }//namespace
