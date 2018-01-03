@@ -29,9 +29,9 @@ ax = Axes3D(fig)
 surf = ax.plot_trisurf(df.x, df.y, df.z, cmap = cm.jet, linewidth = 0.1)
 fig.colorbar(surf, shrink=0.5, aspect=5)
 
-ax.set_xlabel(r'Friction torque 1 - $Nm$', fontsize=18)
-ax.set_ylabel(r'Friction torque 2 - $Nm$', fontsize=18)
-ax.set_zlabel(r'Acceleration energy - $\frac{Nm}{s^2}$', fontsize=18)
+ax.set_xlabel(r'Friction torque 1 $[Nm]$', fontsize=18)
+ax.set_ylabel(r'Friction torque 2 $[Nm]$', fontsize=18)
+ax.set_zlabel(r'Acceleration energy $[\frac{Nm}{s^2}]$', fontsize=18)
 
 class Arrow3D(FancyArrowPatch):
 
