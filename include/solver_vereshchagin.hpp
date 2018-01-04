@@ -77,6 +77,7 @@ public:
     void get_link_inertias(Inertias &h);
     void get_bias_force(Wrenches &u);
     void get_control_torque(JntArray &tau_control);
+    void get_constraint_magnitude(Eigen::VectorXd &nu_);
 
 private:
     /**
