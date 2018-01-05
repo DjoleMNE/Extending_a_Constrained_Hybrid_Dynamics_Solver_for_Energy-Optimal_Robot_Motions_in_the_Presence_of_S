@@ -656,10 +656,9 @@ void test_3_solvers(extended_kinematic_chain &my_robot, motion_specification &mo
     std::cout << " " << '\n';
     std::cout<<"Elapsed time:  "<< std::chrono::duration_cast<nanos>(diff2).count()<<" microseconds "<<std::endl;
     std::cout << " " << '\n'<<std::endl;
-    // Eigen::VectorXd nu(NUMBER_OF_CONSTRAINTS, 0);
-    // ver_solver.get_constraint_magnitude(nu);
-    // std::cout << nu << '\n';
-    // std::cout << nu.rows() << '\n';
+    Eigen::VectorXd nu(NUMBER_OF_CONSTRAINTS, 1);
+    ver_solver.get_constraint_magnitude(nu);
+    std::cout << nu << '\n';
 
     // KDL::ChainIdSolver_RNE RNE_idsolver(my_robot.chain, KDL::Vector(0.0, 0.0, -9.81));
     // KDL::JntArray control_torque_RNE(my_robot.chain.getNrOfJoints());

@@ -446,7 +446,7 @@ void Solver_Vereshchagin::get_control_torque(JntArray &tau_control)
 
 void Solver_Vereshchagin::get_constraint_magnitude(Eigen::VectorXd &nu_)
 {
-    // assert(nu_.rows() == nc);
+    assert(nu_.rows() == nc);
     nu_ = nu;
 }
 
