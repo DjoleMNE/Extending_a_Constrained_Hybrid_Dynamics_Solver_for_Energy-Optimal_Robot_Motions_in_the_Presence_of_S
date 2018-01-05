@@ -1,9 +1,6 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(Testing_repo)
 
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++14" COMPILER_SUPPORTS_CXX14)
 CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
@@ -30,6 +27,7 @@ link_directories(
 
 add_executable(main
   src/main.cpp
+  src/vereshchagin_with_friction.cpp
   src/solver_vereshchagin.cpp
 )
 
