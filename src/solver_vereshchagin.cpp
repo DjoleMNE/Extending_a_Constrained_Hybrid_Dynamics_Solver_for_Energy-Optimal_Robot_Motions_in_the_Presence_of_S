@@ -441,7 +441,7 @@ void Solver_Vereshchagin::get_bias_force(Wrenches &bias)
 void Solver_Vereshchagin::get_control_torque(JntArray &tau_control)
 {
     assert(tau_control.rows() == controlTorque.rows());
-    tau_control = controlTorque;
+    for (int i = 0; i < nj; i++) tau_control(i) = controlTorque(i);
 }
 
 void Solver_Vereshchagin::get_constraint_magnitude(Eigen::VectorXd &nu_)
