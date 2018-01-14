@@ -37,7 +37,7 @@ SOFTWARE.
 
 // const int NUMBER_OF_JOINTS = 2;
 // const int NUMBER_OF_SEGMENTS = 2;
-const int NUMBER_OF_CONSTRAINTS = 6;
+const int NUMBER_OF_CONSTRAINTS = 2;
 
 class extended_kinematic_chain
 {
@@ -201,34 +201,34 @@ void create_my_motion_specification(motion_specification &m)
             KDL::Vector(1.0, 0.0, 0.0),     // linear
             KDL::Vector(0.0, 0.0, 0.0));    // angular
     m.end_effector_unit_constraint_forces.setColumn(0, unit_constraint_force_x);
-    m.end_effector_acceleration_energy_setpoint(0) = 1.0;
+    m.end_effector_acceleration_energy_setpoint(0) = 0.0;
 
     KDL::Twist unit_constraint_force_y(
             KDL::Vector(0.0, 1.0, 0.0),     // linear
             KDL::Vector(0.0, 0.0, 0.0));    // angular
     m.end_effector_unit_constraint_forces.setColumn(1, unit_constraint_force_y);
     m.end_effector_acceleration_energy_setpoint(1) = 0.0;
-    KDL::Twist unit_constraint_force_z(
-            KDL::Vector(0.0, 0.0, 1.0),     // linear
-            KDL::Vector(0.0, 0.0, 0.0));    // angular
-    m.end_effector_unit_constraint_forces.setColumn(2, unit_constraint_force_z);
-    m.end_effector_acceleration_energy_setpoint(2) = 0.0;
-
-    KDL::Twist unit_constraint_force_x1(
-            KDL::Vector(0.0, 0.0, 0.0),     // linear
-            KDL::Vector(1.0, 0.0, 0.0));    // angular
-    m.end_effector_unit_constraint_forces.setColumn(3, unit_constraint_force_x1);
-    m.end_effector_acceleration_energy_setpoint(3) = 0.0;
-    KDL::Twist unit_constraint_force_y1(
-            KDL::Vector(0.0, 0.0, 0.0),     // linear
-            KDL::Vector(0.0, 1.0, 0.0));    // angular
-    m.end_effector_unit_constraint_forces.setColumn(4, unit_constraint_force_y1);
-    m.end_effector_acceleration_energy_setpoint(4) = 0.0;
-    KDL::Twist unit_constraint_force_z1(
-            KDL::Vector(0.0, 0.0, 0.0),     // linear
-            KDL::Vector(0.0, 0.0, 1.0));    // angular
-    m.end_effector_unit_constraint_forces.setColumn(5, unit_constraint_force_z1);
-    m.end_effector_acceleration_energy_setpoint(5) = 0.0;
+    // KDL::Twist unit_constraint_force_z(
+    //         KDL::Vector(0.0, 0.0, 0.0),     // linear
+    //         KDL::Vector(0.0, 0.0, 0.0));    // angular
+    // m.end_effector_unit_constraint_forces.setColumn(2, unit_constraint_force_z);
+    // m.end_effector_acceleration_energy_setpoint(2) = 0.0;
+    //
+    // KDL::Twist unit_constraint_force_x1(
+    //         KDL::Vector(0.0, 0.0, 0.0),     // linear
+    //         KDL::Vector(1.0, 0.0, 0.0));    // angular
+    // m.end_effector_unit_constraint_forces.setColumn(3, unit_constraint_force_x1);
+    // m.end_effector_acceleration_energy_setpoint(3) = 0.0;
+    // KDL::Twist unit_constraint_force_y1(
+    //         KDL::Vector(0.0, 0.0, 0.0),     // linear
+    //         KDL::Vector(0.0, 0.0, 0.0));    // angular
+    // m.end_effector_unit_constraint_forces.setColumn(4, unit_constraint_force_y1);
+    // m.end_effector_acceleration_energy_setpoint(4) = 0.0;
+    // KDL::Twist unit_constraint_force_z1(
+    //         KDL::Vector(0.0, 0.0, 0.0),     // linear
+    //         KDL::Vector(0.0, 0.0, 0.0));    // angular
+    // m.end_effector_unit_constraint_forces.setColumn(5, unit_constraint_force_z1);
+    // m.end_effector_acceleration_energy_setpoint(5) = 0.0;
 
 }
 
@@ -273,6 +273,8 @@ class vereshchagin_with_friction {
             }
 
             plot_file.open ("/home/djole/Downloads/Master/R_&_D/KDL_GIT/Testing_repo/src/Simulation/plot_data.txt");
+            plot_acc.open ("/home/djole/Downloads/Master/R_&_D/KDL_GIT/Testing_repo/src/Simulation/plot_acc.txt");
+
 
             iterate_over_torques(m, initial_friction, resolution, 0, NUMBER_OF_STEPS, resulting_torque_set);
 
@@ -281,6 +283,7 @@ class vereshchagin_with_friction {
                 else plot_file << max_acc_energy;
             }
             plot_file.close();
+            plot_acc.close();
         }
 
     private:
@@ -330,6 +333,17 @@ class vereshchagin_with_friction {
                         plot_file << acc_energy <<"\n";
                     }
                 }
+
+                for(int e = 0; e < number_of_joints_ ; e++){
+                    if(e == number_of_joints_-1){
+                        plot_acc<< friction_torque_(e) <<" "<<qdd_(e);
+                    }
+
+                    else{
+                        plot_acc<< friction_torque_(e) <<" "<<qdd_(e)<<" ";
+                    }
+                }
+                plot_acc<<std::endl;
 
                 if (acc_energy > max_acc_energy){
                     max_acc_energy = acc_energy;
@@ -405,6 +419,7 @@ class vereshchagin_with_friction {
         std::vector<double> optimum_torques;
 
         std::ofstream plot_file;
+        std::ofstream plot_acc;
 };
 
 
