@@ -384,17 +384,17 @@ void test_3_solvers(extended_kinematic_chain &my_robot, motion_specification &mo
     KDL::Vector angularAcc(0.0, 0.0, 0.0);
     KDL::Twist root_acc(linearAcc, angularAcc);
 
-    vereshchagin_with_friction extended_solver(my_robot, root_acc, NUMBER_OF_CONSTRAINTS);
-    auto start = get_time::now(); //use auto keyword to minimize typing strokes
-    extended_solver.solve(motion);
-    auto end = get_time::now();
-    auto diff = end - start;
-
-    std::cout << "Extended Vereshchagin solver" << '\n';
-    std::cout << "Joint torques:        "<<extended_solver.true_control_torques << '\n';
-    std::cout << " " << '\n';
-    std::cout<<"Elapsed time:  "<< std::chrono::duration_cast<nanos>(diff).count()<<" microseconds "<<std::endl;
-    std::cout << " " << '\n'<<std::endl;
+    // vereshchagin_with_friction extended_solver(my_robot, root_acc, NUMBER_OF_CONSTRAINTS);
+    // auto start = get_time::now(); //use auto keyword to minimize typing strokes
+    // extended_solver.solve(motion);
+    // auto end = get_time::now();
+    // auto diff = end - start;
+    //
+    // std::cout << "Extended Vereshchagin solver" << '\n';
+    // std::cout << "Joint torques:        "<<extended_solver.true_control_torques << '\n';
+    // std::cout << " " << '\n';
+    // std::cout<<"Elapsed time:  "<< std::chrono::duration_cast<nanos>(diff).count()<<" microseconds "<<std::endl;
+    // std::cout << " " << '\n'<<std::endl;
 
     KDL::Solver_Vereshchagin ver_solver(
                             my_robot.chain,
@@ -413,8 +413,8 @@ void test_3_solvers(extended_kinematic_chain &my_robot, motion_specification &mo
                  motion.end_effector_acceleration_energy_setpoint, // beta
                  motion.external_force,
                  motion.feedforward_torque); // without friction
-    assert(result2 == 0);
     auto end2 = get_time::now();
+    assert(result2 == 0);
     auto diff2 = end2 - start2;
 
     ver_solver.get_control_torque(control_torque_Ver);
@@ -429,7 +429,7 @@ void test_3_solvers(extended_kinematic_chain &my_robot, motion_specification &mo
         }
         std::cout << " " << '\n';
     }
-
+    
     std::cout << " " << '\n';
     std::cout<<"Elapsed time:  "<< std::chrono::duration_cast<nanos>(diff2).count()<<" microseconds "<<std::endl;
     std::cout << " " << '\n'<<std::endl;
@@ -437,36 +437,36 @@ void test_3_solvers(extended_kinematic_chain &my_robot, motion_specification &mo
     // ver_solver.get_constraint_magnitude(nu);
     // std::cout << nu << '\n';
 
-    KDL::ChainIdSolver_RNE RNE_idsolver(my_robot.chain, KDL::Vector(0.0, 0.0, -9.81));
-    KDL::JntArray control_torque_RNE(my_robot.chain.getNrOfJoints());
-
-    create_F_ext_motion_specification(motion);
-
-    auto start3 = get_time::now();
-    int result3 = RNE_idsolver.CartToJnt(
-                        motion.q,
-                        motion.qd,
-                        motion.qdd,
-                        motion.external_force,
-                        control_torque_RNE);
-    assert(result3 == 0);
-    auto end3 = get_time::now();
-    auto diff3 = end3 - start3;
-    std::cout << "Recursive Newton Euler solver" << '\n';
-    std::cout << "Joint torques:        "<<control_torque_RNE << '\n';
-    if(total_effort){
-        std::vector<double> full_effort(my_robot.chain.getNrOfJoints());
-        std::cout << "Total effort:           ";
-        for(int i = 0; i < my_robot.chain.getNrOfJoints(); i++){
-            full_effort[i] = control_torque_RNE(i) + my_robot.joint_static_friction[i] * sign_of(control_torque_RNE(i));
-            std::cout <<full_effort[i] << "    ";
-        }
-        std::cout << "\n";
-    }
-
-    std::cout <<'\n';
-    std::cout<<"Elapsed time:  "<< std::chrono::duration_cast<nanos>(diff3).count()<<" microseconds "<<std::endl;
-    std::cout <<'\n';
+    // KDL::ChainIdSolver_RNE RNE_idsolver(my_robot.chain, KDL::Vector(0.0, 0.0, -9.81));
+    // KDL::JntArray control_torque_RNE(my_robot.chain.getNrOfJoints());
+    //
+    // create_F_ext_motion_specification(motion);
+    //
+    // auto start3 = get_time::now();
+    // int result3 = RNE_idsolver.CartToJnt(
+    //                     motion.q,
+    //                     motion.qd,
+    //                     motion.qdd,
+    //                     motion.external_force,
+    //                     control_torque_RNE);
+    // assert(result3 == 0);
+    // auto end3 = get_time::now();
+    // auto diff3 = end3 - start3;
+    // std::cout << "Recursive Newton Euler solver" << '\n';
+    // std::cout << "Joint torques:        "<<control_torque_RNE << '\n';
+    // if(total_effort){
+    //     std::vector<double> full_effort(my_robot.chain.getNrOfJoints());
+    //     std::cout << "Total effort:           ";
+    //     for(int i = 0; i < my_robot.chain.getNrOfJoints(); i++){
+    //         full_effort[i] = control_torque_RNE(i) + my_robot.joint_static_friction[i] * sign_of(control_torque_RNE(i));
+    //         std::cout <<full_effort[i] << "    ";
+    //     }
+    //     std::cout << "\n";
+    // }
+    //
+    // std::cout <<'\n';
+    // std::cout<<"Elapsed time:  "<< std::chrono::duration_cast<nanos>(diff3).count()<<" microseconds "<<std::endl;
+    // std::cout <<'\n';
 }
 
 void test_2_models_FD(extended_kinematic_chain &robot_1, extended_kinematic_chain &robot_2, motion_specification &motion_1, motion_specification &motion_2)
@@ -553,28 +553,28 @@ int main(int argc, char* argv[])
     create_my_LWR_robot(LWR_robot);
     motion_specification LWR_motion(LWR_robot.chain.getNrOfJoints(), LWR_robot.chain.getNrOfSegments(), NUMBER_OF_CONSTRAINTS);
 
-    std::cout << "Testing 5DOF robot model with 3 different solvers" << '\n'<<std::endl;
-    std::cout << "5DOF robot friction torques:        ";
-    for(int i=0; i<five_DOF_robot.chain.getNrOfJoints(); ++i)  std::cout << five_DOF_robot.joint_static_friction[i] << "  ";
-    std::cout <<'\n'<<std::endl;
-    test_3_solvers(five_DOF_robot, five_DOF_motion, true);
-    std::cout << " " << '\n'<<std::endl;
+    // std::cout << "Testing 5DOF robot model with 3 different solvers" << '\n'<<std::endl;
+    // std::cout << "5DOF robot friction torques:        ";
+    // for(int i=0; i<five_DOF_robot.chain.getNrOfJoints(); ++i)  std::cout << five_DOF_robot.joint_static_friction[i] << "  ";
+    // std::cout <<'\n'<<std::endl;
+    // test_3_solvers(five_DOF_robot, five_DOF_motion, true);
+    // std::cout << " " << '\n'<<std::endl;
 
     std::cout << "Testing LWR robot model with 3 different solvers" << '\n'<<std::endl;
     std::cout << "LWR friction torques:        ";
     for(int i=0; i<LWR_robot.chain.getNrOfJoints(); ++i)  std::cout << LWR_robot.joint_static_friction[i] << "  ";
     std::cout <<'\n'<<std::endl;
     test_3_solvers(LWR_robot, LWR_motion, false);
-
-    std::cout << " " << '\n'<<std::endl;
-
-    std::cout << "Testing(FD) 2 robot models with the same extended Vereshchagin solver" << '\n'<<std::endl;
-    test_2_models_FD(five_DOF_robot, LWR_robot, five_DOF_motion, LWR_motion);
-
-    std::cout << " " << '\n'<<std::endl;
-
-    std::cout << "Testing(ID) 2 robot models with the same extended Vereshchagin solver" << '\n'<<std::endl;
-    test_2_models_ID(five_DOF_robot, LWR_robot, five_DOF_motion, LWR_motion);
+    //
+    // std::cout << " " << '\n'<<std::endl;
+    //
+    // std::cout << "Testing(FD) 2 robot models with the same extended Vereshchagin solver" << '\n'<<std::endl;
+    // test_2_models_FD(five_DOF_robot, LWR_robot, five_DOF_motion, LWR_motion);
+    //
+    // std::cout << " " << '\n'<<std::endl;
+    //
+    // std::cout << "Testing(ID) 2 robot models with the same extended Vereshchagin solver" << '\n'<<std::endl;
+    // test_2_models_ID(five_DOF_robot, LWR_robot, five_DOF_motion, LWR_motion);
 
 	return 0;
 }
