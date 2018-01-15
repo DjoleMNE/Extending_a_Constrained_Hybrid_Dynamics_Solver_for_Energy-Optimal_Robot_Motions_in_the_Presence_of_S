@@ -437,8 +437,27 @@ int main(int argc, char* argv[])
     KDL::Vector angularAcc(0.0, 0.0, 0.0);
     KDL::Twist root_acc(linearAcc, angularAcc);
 
+    KDL::Solver_Vereshchagin ver_solver(my_robot.chain, root_acc, NUMBER_OF_CONSTRAINTS);
+    int result = ver_solver.CartToJnt(
+                 my_motion.q, my_motion.qd, my_motion.qdd, //qdd_ is overwritten by accual/resulting acceleration
+                 my_motion.end_effector_unit_constraint_forces,       // alpha
+                 my_motion.end_effector_acceleration_energy_setpoint, // beta
+                 my_motion.external_force,
+                 my_motion.feedforward_torque);  // tau_ is overwritten!
+         assert(result == 0);
+    std::cout << my_motion.qdd << '\n';
+    std::vector<KDL::Twist> xDotdot;
+    xDotdot.resize(my_robot.chain.getNrOfSegments()+1);
+    ver_solver.get_link_acceleration(xDotdot);
+
+    for (size_t i = 0; i < my_robot.chain.getNrOfSegments()+1; i++) {
+        std::cout << xDotdot[i] << '\n';
+    }
+
+    create_my_motion_specification(my_motion);
     vereshchagin_with_friction solver(my_robot, root_acc, NUMBER_OF_CONSTRAINTS);
     solver.solve(my_motion);
+    std::cout << my_motion.qdd << '\n';
 
 	return 0;
 }
