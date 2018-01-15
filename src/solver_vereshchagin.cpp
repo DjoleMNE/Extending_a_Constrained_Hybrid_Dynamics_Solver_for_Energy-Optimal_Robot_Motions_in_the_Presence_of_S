@@ -409,6 +409,9 @@ void Solver_Vereshchagin::final_upwards_sweep(JntArray &q_dotdot, JntArray &torq
 //Returns cartesian acceleration of links in link tip coordinates
 void Solver_Vereshchagin::get_link_acceleration(Twists& xDotdot)
 {
+    //Assersions need to be replaced with run-time errors!
+    //For example errors specified in SolverI class
+    //Because KDL compiles in RELEASE mode!
     assert(xDotdot.size() == ns + 1);
     xDotdot[0] = acc_root;
     for (int i = 1; i < ns + 1; i++) {
@@ -422,6 +425,9 @@ void Solver_Vereshchagin::get_link_acceleration(Twists& xDotdot)
 //but variable Type is ArticulatedBodyInertia!
 void Solver_Vereshchagin::get_link_inertias(Inertias &h)
 {
+    //Assersions need to be replaced with run-time errors!
+    //For example errors specified in SolverI class
+    //Because KDL compiles in RELEASE mode!
     assert(h.size() == ns + 1);
 
     for (int i = 0; i < ns + 1; i++) {
@@ -431,6 +437,9 @@ void Solver_Vereshchagin::get_link_inertias(Inertias &h)
 
 void Solver_Vereshchagin::get_bias_force(Wrenches &bias)
 {
+    //Assersions need to be replaced with run-time errors!
+    //For example errors specified in SolverI class
+    //Because KDL compiles in RELEASE mode!
     assert(bias.size() == ns + 1);
 
     for (int i = 0; i < ns + 1; i++) {
@@ -440,12 +449,19 @@ void Solver_Vereshchagin::get_bias_force(Wrenches &bias)
 
 void Solver_Vereshchagin::get_control_torque(JntArray &tau_control)
 {
+    //Assersions need to be replaced with run-time errors!
+    //For example errors specified in SolverI class
+    //Because KDL compiles in RELEASE mode!
+
     assert(tau_control.rows() == controlTorque.rows());
     for (int i = 0; i < nj; i++) tau_control(i) = controlTorque(i);
 }
 
 void Solver_Vereshchagin::get_constraint_magnitude(Eigen::VectorXd &nu_)
 {
+    //Assersions need to be replaced with run-time errors!
+    //For example errors specified in SolverI class
+    //Because KDL compiles in RELEASE mode!
     assert(nu_.rows() == nc);
     nu_ = nu;
 }
