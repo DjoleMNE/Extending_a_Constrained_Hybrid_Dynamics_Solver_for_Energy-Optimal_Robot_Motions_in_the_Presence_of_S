@@ -44,6 +44,7 @@ class vereshchagin_with_friction {
 
 		KDL::JntArray true_control_torques;
 		KDL::JntArray true_joint_acc;
+        double final_acc_energy;
 
         vereshchagin_with_friction(
                 const extended_kinematic_chain &chain,

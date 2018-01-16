@@ -86,6 +86,7 @@ void vereshchagin_with_friction::solve(motion_specification &m){
         if(i != number_of_joints_) plot_file << optimum_friction_tau_[i] <<" ";
         else plot_file << max_acc_energy;
     }
+    final_acc_energy = max_acc_energy;
     plot_file.close();
 }
 

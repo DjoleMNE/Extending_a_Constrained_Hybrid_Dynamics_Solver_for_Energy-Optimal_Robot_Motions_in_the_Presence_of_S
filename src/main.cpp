@@ -35,12 +35,10 @@ SOFTWARE.
 #include <chrono>
 #include <kdl_parser/kdl_parser.hpp>
 #include <urdf/model.h>
+
 using nanos = std::chrono::microseconds;
 using get_time = std::chrono::steady_clock;
-
-// const int NUMBER_OF_JOINTS = 2;
-// const int NUMBER_OF_SEGMENTS = 2;
-const int NUMBER_OF_CONSTRAINTS = 1;
+const int NUMBER_OF_CONSTRAINTS = 2;
 
 int sign_of(double x){
     if(x < 0.0){
@@ -49,17 +47,33 @@ int sign_of(double x){
     else return 1;
 }
 
+//Calculate acceleration energy based on Gauss least constraint principle
+double compute_acc_energy(const extended_kinematic_chain &chain_,
+                        const std::vector<KDL::Twist> &xdd,
+                        const std::vector<KDL::ArticulatedBodyInertia> &h,
+                        const KDL::Wrenches &bias_force,
+                        const KDL::JntArray &qdd,
+                        const KDL::JntArray &tau)
+{
+
+    double acc_energy_joint = 0.0;
+    for (int i = 0; i < chain_.chain.getNrOfJoints(); i++)  {
+        acc_energy_joint += 0.5 * (qdd(i) * chain_.joint_inertia[i] * qdd(i));
+        acc_energy_joint -= 0.5 * (tau(i) * qdd(i));
+    }
+
+    double acc_energy_segment = 0.0;
+    for (int i = 1; i < chain_.chain.getNrOfSegments()+1; i++) {
+        acc_energy_segment += 0.5 * dot(xdd[i], h[i] * xdd[i]);
+        acc_energy_segment += 0.5 * dot(bias_force[i], xdd[i]);
+    }
+
+    return acc_energy_joint + acc_energy_segment;
+}
+
+
 int create_my_5DOF_robot(extended_kinematic_chain &c)
 {
-    int number_of_joints = 5;
-
-    c.joint_inertia.resize(number_of_joints);
-    for (int i = 0; i < number_of_joints; i++) c.joint_inertia[i] = 0.3;
-
-    c.joint_static_friction.resize(number_of_joints);
-    // for (int i = 0; i < number_of_joints; i++) c.joint_static_friction[i] = 5.0;
-    c.joint_static_friction = {1.260, 0.956, 0.486, 0.300, 0.177};
-
     //Extract KDL tree from URDF file
     KDL::Tree yb_tree;
     urdf::Model yb_model;
@@ -77,6 +91,15 @@ int create_my_5DOF_robot(extended_kinematic_chain &c)
     //Extract KDL chain from KDL tree
     yb_tree.getChain("arm_link_0", "arm_link_5", c.chain);
 
+    int number_of_joints = c.chain.getNrOfJoints();
+
+    c.joint_inertia.resize(number_of_joints);
+    for (int i = 0; i < number_of_joints; i++) c.joint_inertia[i] = 0.3;
+
+    c.joint_static_friction.resize(number_of_joints);
+    // for (int i = 0; i < number_of_joints; i++) c.joint_static_friction[i] = 5.0;
+    c.joint_static_friction = {1.260, 0.956, 0.486, 0.300, 0.177};
+
     //In total 5 joints (NOT counting fixed - 0), 5 segments (NOT counting base link 0) and 6 frames
     return 1;
 }
@@ -92,9 +115,9 @@ void create_my_LWR_robot(extended_kinematic_chain &c)
     // for (int i = 0; i < number_of_joints; i++) c.joint_static_friction[i] = 10.0;
     c.joint_static_friction = {2.52,  1.912,  0.972,  0.6,  0.354,  0.354,  0.177};
 
-    //Frames describe pose of the segment(base link) 0 tip, wrt joint 0 frame (inertial frame) - frame 0
-    //Frame defenes pose of joint 1 in respect to joint 0 (inertial frame)
-    //joint 0
+    // Frames describe pose of the segment(base link) 0 tip, wrt joint 0 frame (inertial frame) - frame 0
+    // Frame defenes pose of joint 1 in respect to joint 0 (inertial frame)
+    // // joint 0
 	// c.chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::None),
 	// 			  KDL::Frame::DH_Craig1989(0.0, 0.0, 0.31, 0.0)));
 
@@ -311,7 +334,7 @@ void create_ff_tau_motion_specification(motion_specification &m)
     // m.end_effector_acceleration_energy_setpoint(5) = 0.0;
 }
 
-void create_constrained_motion_specification(motion_specification &m)
+void create_input_FD_specification(motion_specification &m, KDL::JntArray &ff_torque)
 {
     int number_of_joints = m.q.rows();
     int number_of_segments = m.external_force.size();
@@ -323,8 +346,9 @@ void create_constrained_motion_specification(motion_specification &m)
 
     for (int i = 2; i < number_of_joints; i++) m.q(i) = 0.0;
     for (int i = 0; i < number_of_joints; i++) m.qd(i) = 0.0;
+    m.qd(1) = 10.0;
     for (int i = 0; i < number_of_joints; i++) m.qdd(i) = 0.0;
-    for (int i = 0; i < number_of_joints; i++) m.feedforward_torque(i) = 0.0;
+    for (int i = 0; i < number_of_joints; i++) m.feedforward_torque(i) = ff_torque(i);
 
     // //external forces on the arm
     for (int i = 0; i < number_of_segments - 1; i++) {
@@ -341,19 +365,55 @@ void create_constrained_motion_specification(motion_specification &m)
 
     //gravity compensation
     KDL::Twist unit_constraint_force_x(
+            KDL::Vector(0.0, 0.0, 0.0),     // linear
+            KDL::Vector(0.0, 0.0, 0.0));    // angular
+    m.end_effector_unit_constraint_forces.setColumn(0, unit_constraint_force_x);
+    m.end_effector_acceleration_energy_setpoint(0) = 0.0;
+}
+
+void create_constrained_motion_specification(motion_specification &m)
+{
+    int number_of_joints = m.q.rows();
+    int number_of_segments = m.external_force.size();
+
+    m.q(0) = M_PI / 2.0;
+    m.q(1) = M_PI / 6.0;
+    // m.q(0) = 0.0;
+    // m.q(1) = 0.0;
+
+    for (int i = 2; i < number_of_joints; i++) m.q(i) = 0.0;
+    for (int i = 0; i < number_of_joints; i++) m.qd(i) = 0.0;
+    for (int i = 0; i < number_of_joints; i++) m.qdd(i) = 0.0;
+    for (int i = 0; i < number_of_joints; i++) m.feedforward_torque(i) = 0.0;
+
+    // external forces on the arm
+    for (int i = 0; i < number_of_segments - 1; i++) {
+        KDL::Wrench externalForce(
+            KDL::Vector(0.0, 0.0, 0.0), //Force
+            KDL::Vector(0.0, 0.0, 0.0)); //Torque
+        m.external_force[i] = externalForce;
+    }
+
+    KDL::Wrench externalForceEE(
+        KDL::Vector(2.0, -2.0, 0.0), //Force
+        KDL::Vector(0.0, 0.0, 0.0));//Torque
+    m.external_force[number_of_segments - 1] = externalForceEE;
+
+    //gravity compensation
+    KDL::Twist unit_constraint_force_x(
             KDL::Vector(0.0, 0.0, 1.0),     // linear
             KDL::Vector(0.0, 0.0, 0.0));    // angular
     m.end_effector_unit_constraint_forces.setColumn(0, unit_constraint_force_x);
     m.end_effector_acceleration_energy_setpoint(0) = 0.0;
-    //
-    // KDL::Twist unit_constraint_force_y(
-    //         KDL::Vector(0.0, 0.0, 0.0),     // linear
-    //         KDL::Vector(0.0, 0.0, 0.0));    // angular
-    // m.end_effector_unit_constraint_forces.setColumn(1, unit_constraint_force_y);
-    // m.end_effector_acceleration_energy_setpoint(1) = 0.0;
-    //
+
+    KDL::Twist unit_constraint_force_y(
+            KDL::Vector(0.0, 1.0, 0.0),     // linear
+            KDL::Vector(0.0, 0.0, 0.0));    // angular
+    m.end_effector_unit_constraint_forces.setColumn(1, unit_constraint_force_y);
+    m.end_effector_acceleration_energy_setpoint(1) = 0.0;
+
     // KDL::Twist unit_constraint_force_z(
-    //         KDL::Vector(0.0, 0.0, 1.0),     // linear
+    //         KDL::Vector(0.0, 0.0, 0.0),     // linear
     //         KDL::Vector(0.0, 0.0, 0.0));    // angular
     // m.end_effector_unit_constraint_forces.setColumn(2, unit_constraint_force_z);
     // m.end_effector_acceleration_energy_setpoint(2) = 0.0;
@@ -377,50 +437,63 @@ void create_constrained_motion_specification(motion_specification &m)
     // m.end_effector_acceleration_energy_setpoint(5) = 0.0;
 }
 
-
-void test_3_solvers(extended_kinematic_chain &my_robot, motion_specification &motion, bool total_effort = false)
+void test_3_solvers(extended_kinematic_chain &my_robot,
+                    motion_specification &motion1,
+                    motion_specification &motion2,
+                    motion_specification &motion3,
+                    motion_specification &motion4,
+                    bool total_effort = false)
 {
-    create_F_ext_motion_specification(motion);
     KDL::Vector linearAcc(0.0, 0.0, -9.81); //gravitational acceleration along Z of arm root
     KDL::Vector angularAcc(0.0, 0.0, 0.0);
     KDL::Twist root_acc(linearAcc, angularAcc);
+    create_constrained_motion_specification(motion1);
 
-    // vereshchagin_with_friction extended_solver(my_robot, root_acc, NUMBER_OF_CONSTRAINTS);
-    // auto start = get_time::now(); //use auto keyword to minimize typing strokes
-    // extended_solver.solve(motion);
-    // auto end = get_time::now();
-    // auto diff = end - start;
-    //
-    // std::cout << "Extended Vereshchagin solver" << '\n';
-    // std::cout << "Joint torques:        "<<extended_solver.true_control_torques << '\n';
-    // std::cout << " " << '\n';
-    // std::cout<<"Elapsed time:  "<< std::chrono::duration_cast<nanos>(diff).count()<<" microseconds "<<std::endl;
-    // std::cout << " " << '\n'<<std::endl;
+    //Extended solver
+    vereshchagin_with_friction extended_solver(my_robot, root_acc, NUMBER_OF_CONSTRAINTS);
+    extended_solver.solve(motion1);
 
-    KDL::Solver_Vereshchagin ver_solver(
-                            my_robot.chain,
-                            KDL::Twist(
-                                KDL::Vector(0.0, 0.0, -9.81),
-                                KDL::Vector(0.0, 0.0, 0.0)),
-                            NUMBER_OF_CONSTRAINTS);
+
+    std::cout << "Extended Acc" << '\n';
+    std::cout << extended_solver.true_joint_acc << '\n';
+    std::cout << "Extended Vereshchagin solver" << '\n';
+    std::cout << "Joint torques:        "<<extended_solver.true_control_torques << '\n';
+    std::cout << " " << '\n';
+
+    //Original solver
+    KDL::Solver_Vereshchagin ver_solver(my_robot.chain,
+                                        KDL::Twist(
+                                            KDL::Vector(0.0, 0.0, -9.81),
+                                            KDL::Vector(0.0, 0.0, 0.0)),
+                                        NUMBER_OF_CONSTRAINTS);
 
     KDL::JntArray control_torque_Ver(my_robot.chain.getNrOfJoints());
-    create_F_ext_motion_specification(motion);
+    create_constrained_motion_specification(motion2);
 
-    auto start2 = get_time::now();
     int result2 = ver_solver.CartToJnt(
-                 motion.q, motion.qd, motion.qdd,
-                 motion.end_effector_unit_constraint_forces,       // alpha
-                 motion.end_effector_acceleration_energy_setpoint, // beta
-                 motion.external_force,
-                 motion.feedforward_torque); // without friction
-    auto end2 = get_time::now();
-    assert(result2 == 0);
-    auto diff2 = end2 - start2;
+                 motion2.q, motion2.qd, motion2.qdd,
+                 motion2.end_effector_unit_constraint_forces,       // alpha
+                 motion2.end_effector_acceleration_energy_setpoint, // beta
+                 motion2.external_force,
+                 motion2.feedforward_torque); // without friction
+     assert(result2 == 0);
+
+    std::vector<KDL::Twist> xDotdot;
+    xDotdot.resize(my_robot.chain.getNrOfSegments()+1);
+    ver_solver.get_link_acceleration(xDotdot);
+
+    for (size_t i = 0; i < my_robot.chain.getNrOfSegments()+1; i++) {
+        std::cout << xDotdot[i] << '\n';
+    }
+
+    std::cout << "\n" << '\n';
+    std::cout << "Original Acc joint" << '\n';
+    std::cout << motion2.qdd << '\n';
 
     ver_solver.get_control_torque(control_torque_Ver);
     std::cout << "Original Vereshchagin solver" << '\n';
     std::cout << "Joint torques:        "<<control_torque_Ver << '\n';
+
     if(total_effort){
         std::vector<double> full_effort(my_robot.chain.getNrOfJoints());
         std::cout << "Total effort:           ";
@@ -431,28 +504,27 @@ void test_3_solvers(extended_kinematic_chain &my_robot, motion_specification &mo
         std::cout << " " << '\n';
     }
 
-    std::cout << " " << '\n';
-    std::cout<<"Elapsed time:  "<< std::chrono::duration_cast<nanos>(diff2).count()<<" microseconds "<<std::endl;
-    std::cout << " " << '\n'<<std::endl;
     // Eigen::VectorXd nu(NUMBER_OF_CONSTRAINTS, 1);
     // ver_solver.get_constraint_magnitude(nu);
     // std::cout << nu << '\n';
 
-    // KDL::ChainIdSolver_RNE RNE_idsolver(my_robot.chain, KDL::Vector(0.0, 0.0, -9.81));
+    //RNE solver
+    // KDL::Vector linearAcc_RNE(0.0, 0.0, -9.81);
+    // KDL::ChainIdSolver_RNE RNE_idsolver(my_robot.chain, linearAcc_RNE);
     // KDL::JntArray control_torque_RNE(my_robot.chain.getNrOfJoints());
+    // KDL::JntArray input_qdd(my_robot.chain.getNrOfJoints());
     //
-    // create_F_ext_motion_specification(motion);
+    // create_input_FD_specification(motion3, control_torque_Ver);
     //
-    // auto start3 = get_time::now();
     // int result3 = RNE_idsolver.CartToJnt(
-    //                     motion.q,
-    //                     motion.qd,
-    //                     motion.qdd,
-    //                     motion.external_force,
+    //                     motion3.q,
+    //                     motion3.qd,
+    //                     motion3.qdd,
+    //                     motion3.external_force,
     //                     control_torque_RNE);
+
     // assert(result3 == 0);
-    // auto end3 = get_time::now();
-    // auto diff3 = end3 - start3;
+
     // std::cout << "Recursive Newton Euler solver" << '\n';
     // std::cout << "Joint torques:        "<<control_torque_RNE << '\n';
     // if(total_effort){
@@ -464,127 +536,257 @@ void test_3_solvers(extended_kinematic_chain &my_robot, motion_specification &mo
     //     }
     //     std::cout << "\n";
     // }
+
+    // create_input_FD_specification(motion4, control_torque_RNE);
+    // int result4 = ver_solver.CartToJnt(
+    //              motion4.q, motion4.qd, motion4.qdd,
+    //              motion4.end_effector_unit_constraint_forces,       // alpha
+    //              motion4.end_effector_acceleration_energy_setpoint, // beta
+    //              motion4.external_force,
+    //              motion4.feedforward_torque); // without friction
     //
-    // std::cout <<'\n';
-    // std::cout<<"Elapsed time:  "<< std::chrono::duration_cast<nanos>(diff3).count()<<" microseconds "<<std::endl;
-    // std::cout <<'\n';
+    // std::vector<KDL::Twist> xDotdot;
+    // xDotdot.resize(my_robot.chain.getNrOfSegments()+1);
+    // ver_solver.get_link_acceleration(xDotdot);
+    //
+    // std::cout << "Link ACC" << '\n';
+    // for (size_t i = 0; i < my_robot.chain.getNrOfSegments()+1; i++) {
+    //     std::cout << xDotdot[i] << '\n';
+    // }
+    // std::cout << motion4.qdd << '\n';
+
 }
 
-void test_2_models_FD(extended_kinematic_chain &robot_1, extended_kinematic_chain &robot_2, motion_specification &motion_1, motion_specification &motion_2)
-{
-    create_ff_tau_motion_specification(motion_1);
-    //arm root acceleration
-    KDL::Vector linearAcc(0.0, 0.0, -9.81); //gravitational acceleration along Z
-    KDL::Vector angularAcc(0.0, 0.0, 0.0);
-    KDL::Twist root_acc(linearAcc, angularAcc);
 
-    vereshchagin_with_friction extended_solver_1(robot_1, root_acc, NUMBER_OF_CONSTRAINTS);
-    auto start = get_time::now(); //use auto keyword to minimize typing strokes
-    extended_solver_1.solve(motion_1);
+void test_in_loop_3_solvers(extended_kinematic_chain &my_robot,
+                    motion_specification &motion)
+{
+    auto start = get_time::now();
     auto end = get_time::now();
     auto diff = end - start;
 
-    std::cout << "Robot 1" << '\n';
-    std::cout << "Joint accelerations:  "<<extended_solver_1.true_joint_acc << '\n';
-    std::cout << " " << '\n';
-    std::cout<<"Elapsed time:  "<< std::chrono::duration_cast<nanos>(diff).count()<<" microseconds "<<std::endl;
-    std::cout << " " << '\n';
+	std::ofstream plot_file;
+    KDL::Vector linearAcc(0.0, 0.0, -9.81); //gravitational acceleration along Z of arm root
+    KDL::Vector angularAcc(0.0, 0.0, 0.0);
+    KDL::Twist root_acc(linearAcc, angularAcc);
+    create_constrained_motion_specification(motion);
+    plot_file.open ("../tests/runtimes_extended.txt");
 
-    create_ff_tau_motion_specification(motion_2);
+    // Extended solver
+    vereshchagin_with_friction extended_solver(my_robot, root_acc, NUMBER_OF_CONSTRAINTS);
 
-    vereshchagin_with_friction extended_solver_2(robot_2, root_acc, NUMBER_OF_CONSTRAINTS);
-    auto start2 = get_time::now(); //use auto keyword to minimize typing strokes
-    extended_solver_2.solve(motion_2);
-    auto end2 = get_time::now();
-    auto diff2 = end2 - start2;
+    for (int i = 0; i < 100; i++) {
+        start = get_time::now();
+        extended_solver.solve(motion);
+        end = get_time::now();
+        diff = end - start;
+        plot_file<< std::chrono::duration_cast<nanos>(diff).count()<<std::endl;
+    }
 
-    std::cout << "Robot 2" << '\n';
-    std::cout << "Joint accelerations:  "<<extended_solver_2.true_joint_acc << '\n';
-    std::cout << " " << '\n';
-    std::cout<<"Elapsed time:  "<< std::chrono::duration_cast<nanos>(diff2).count()<<" microseconds "<<std::endl;
-    std::cout << " " << '\n';
+    // //Original solver
+    // KDL::Solver_Vereshchagin ver_solver(my_robot.chain,
+    //                                     KDL::Twist(
+    //                                         KDL::Vector(0.0, 0.0, -9.81),
+    //                                         KDL::Vector(0.0, 0.0, 0.0)),
+    //                                     NUMBER_OF_CONSTRAINTS);
+    // int result2=0;
+    // for (int i = 0; i < 100; i++) {
+    //
+    //     start = get_time::now();
+    //     result2 = ver_solver.CartToJnt(
+    //                     motion.q, motion.qd, motion.qdd,
+    //                     motion.end_effector_unit_constraint_forces,       // alpha
+    //                     motion.end_effector_acceleration_energy_setpoint, // beta
+    //                     motion.external_force,
+    //                     motion.feedforward_torque); // without friction
+    //     end = get_time::now();
+    //
+    //     assert(result2 == 0);
+    //     diff = end - start;
+    //     plot_file<<std::chrono::duration_cast<nanos>(diff).count()<<std::endl;
+    // }
+
+    // result2 = ver_solver.CartToJnt(
+    //                 motion.q, motion.qd, motion.qdd,
+    //                 motion.end_effector_unit_constraint_forces,       // alpha
+    //                 motion.end_effector_acceleration_energy_setpoint, // beta
+    //                 motion.external_force,
+    //                 motion.feedforward_torque); // without friction
+    // assert(result2 == 0);
+    //
+    // KDL::JntArray input_qdd(my_robot.chain.getNrOfJoints());
+    //
+    // for (int e = 0; e < my_robot.chain.getNrOfJoints(); e++) {
+    //     input_qdd(e) = motion.qdd(e);
+    // }
+    //
+    // // //RNE solver
+    // KDL::Vector linearAcc_RNE(0.0, 0.0, -9.81);
+    // KDL::ChainIdSolver_RNE RNE_idsolver(my_robot.chain, linearAcc_RNE);
+    // create_constrained_motion_specification(motion);
+    // int result3 = 0;
+    //
+    // for (int i = 0; i < 100; i++) {
+    //
+    //     start = get_time::now();
+    //     result3 = RNE_idsolver.CartToJnt(
+    //                                     motion.q,
+    //                                     motion.qd,
+    //                                     input_qdd,
+    //                                     motion.external_force,
+    //                                     motion.feedforward_torque);
+    //     end = get_time::now();
+    //     assert(result3 == 0);
+    //     diff = end - start;
+    //     plot_file<<std::chrono::duration_cast<nanos>(diff).count()<<std::endl;
+    // }
+    plot_file.close();
 }
 
-void test_2_models_ID(extended_kinematic_chain &robot_1, extended_kinematic_chain &robot_2, motion_specification &motion_1, motion_specification &motion_2)
+void compare_acc_energy(extended_kinematic_chain &my_robot,
+                    motion_specification &motion)
 {
-    create_constrained_motion_specification(motion_1);
-    //arm root acceleration
-    KDL::Vector linearAcc(0.0, 0.0, -9.81); //gravitational acceleration along Z
+    KDL::Vector linearAcc(0.0, 0.0, -9.81); //gravitational acceleration along Z of arm root
     KDL::Vector angularAcc(0.0, 0.0, 0.0);
     KDL::Twist root_acc(linearAcc, angularAcc);
 
-    vereshchagin_with_friction extended_solver_1(robot_1, root_acc, NUMBER_OF_CONSTRAINTS);
-    auto start = get_time::now(); //use auto keyword to minimize typing strokes
-    extended_solver_1.solve(motion_1);
-    auto end = get_time::now();
-    auto diff = end - start;
+    create_constrained_motion_specification(motion);
 
-    std::cout << "Robot 1" << '\n';
-    std::cout << "Joint torques:        "<<extended_solver_1.true_control_torques << '\n';
+    //Extended solver
+    vereshchagin_with_friction extended_solver(my_robot, root_acc, NUMBER_OF_CONSTRAINTS);
+    extended_solver.solve(motion);
+    double acc_energy_extended = extended_solver.final_acc_energy;
+
+    std::cout << "Extended Solver Acc Energy" << '\n';
+    std::cout <<acc_energy_extended << '\n';
     std::cout << " " << '\n';
-    std::cout<<"Elapsed time:  "<< std::chrono::duration_cast<nanos>(diff).count()<<" microseconds "<<std::endl;
-    std::cout << " " << '\n';
 
-    create_constrained_motion_specification(motion_2);
+    //Original solver
+    KDL::Solver_Vereshchagin ver_solver(my_robot.chain,
+                                        KDL::Twist(
+                                            KDL::Vector(0.0, 0.0, -9.81),
+                                            KDL::Vector(0.0, 0.0, 0.0)),
+                                        NUMBER_OF_CONSTRAINTS);
 
-    vereshchagin_with_friction extended_solver_2(robot_2, root_acc, NUMBER_OF_CONSTRAINTS);
-    auto start2 = get_time::now(); //use auto keyword to minimize typing strokes
-    extended_solver_2.solve(motion_2);
-    auto end2 = get_time::now();
-    auto diff2 = end2 - start2;
+    create_constrained_motion_specification(motion);
 
-    std::cout << "Robot 2" << '\n';
-    std::cout << "Joint torques:        "<<extended_solver_2.true_control_torques << '\n';
-    std::cout << " " << '\n';
-    std::cout<<"Elapsed time:  "<< std::chrono::duration_cast<nanos>(diff2).count()<<" microseconds "<<std::endl;
-    std::cout << " " << '\n';
-}
+    int result2 = ver_solver.CartToJnt(
+                 motion.q, motion.qd, motion.qdd,
+                 motion.end_effector_unit_constraint_forces,       // alpha
+                 motion.end_effector_acceleration_energy_setpoint, // beta
+                 motion.external_force,
+                 motion.feedforward_torque); // without friction
 
-void ik_cart_to_joint(extended_kinematic_chain &robot_1, motion_specification &motion_2, KDL::JntArray& qdotdot_out)
-{
-    // create_constrained_motion_specification(motion_1);
-    KDL::ChainIkSolverAcc ik_acc_solver(robot_1.chain);
-    // KDL::Twist a_in(1);
-    // a_in(0) = motion_1.end_effector_acceleration_energy_setpoint(0);
-    // int return_value = ik_acc_solver.CartToJnt(motion_1.q, motion_1.qd,
-    //                                             a_in, qdotdot_out);
-    // std::cout << return_value << '\n';
+     assert(result2 == 0);
+
+     ver_solver.get_control_torque(motion.feedforward_torque);
+
+     for(int i = 0; i < my_robot.chain.getNrOfJoints(); i++){
+         motion.feedforward_torque(i) = motion.feedforward_torque(i) + my_robot.joint_static_friction[i] * sign_of(motion.feedforward_torque(i));
+     }
+
+     create_input_FD_specification(motion, motion.feedforward_torque);
+
+     result2 = ver_solver.CartToJnt(
+                  motion.q, motion.qd, motion.qdd,
+                  motion.end_effector_unit_constraint_forces,       // alpha
+                  motion.end_effector_acceleration_energy_setpoint, // beta
+                  motion.external_force,
+                  motion.feedforward_torque); // without friction
+
+      assert(result2 == 0);
+
+     std::vector<KDL::Twist> xDotdot;
+     xDotdot.resize(my_robot.chain.getNrOfSegments()+1);
+     std::vector<KDL::ArticulatedBodyInertia> articulated_body_inertia_;
+     articulated_body_inertia_.resize(my_robot.chain.getNrOfSegments()+1);
+     KDL::Wrenches bias_force_(my_robot.chain.getNrOfSegments()+1);
+
+     ver_solver.get_link_acceleration(xDotdot);
+     ver_solver.get_link_inertias(articulated_body_inertia_);
+     ver_solver.get_bias_force(bias_force_);
+
+     double acc_energy_original = compute_acc_energy(my_robot,
+                                         xDotdot,
+                                         articulated_body_inertia_,
+                                         bias_force_, motion.qdd,
+                                         motion.feedforward_torque);
+    // std::cout << "\n" << '\n';
+    // for (int i = 0; i < my_robot.chain.getNrOfSegments()+1; i++) {
+    //     std::cout << xDotdot[i] << '\n';
+    //     std::cout << "\n" << '\n';
+    //     std::cout << articulated_body_inertia_[i].H << '\n';
+    //     std::cout << "\n" << '\n';
+    //     std::cout << bias_force_[i] << '\n';
+    //     std::cout << "\n" << '\n';
+    //     std::cout << motion.qdd(i) << '\n';
+    // }
+
+    std::cout << "Original Solver Acc Energy" << '\n';
+    std::cout << acc_energy_original << '\n';
 }
 
 int main(int argc, char* argv[])
 {
     // extended_kinematic_chain my_robot;
     // create_my_2DOF_robot(my_robot);
-    // motion_specification my_2DOF_motion(my_robot.chain.getNrOfJoints(), my_robot.chain.getNrOfSegments(), NUMBER_OF_CONSTRAINTS)
-    // KDL::JntArray ik_qdd(my_robot.chain.getNrOfJoints()); // To get as output
-    // ik_cart_to_joint(my_robot, my_2DOF_motion, ik_qdd);
-    // std::cout << ik_qdd << '\n';
-    
+    // motion_specification my_2DOF_motion1(my_robot.chain.getNrOfJoints(), my_robot.chain.getNrOfSegments(), NUMBER_OF_CONSTRAINTS);
+    // motion_specification my_2DOF_motion2(my_robot.chain.getNrOfJoints(), my_robot.chain.getNrOfSegments(), NUMBER_OF_CONSTRAINTS);
+    // motion_specification my_2DOF_motion3(my_robot.chain.getNrOfJoints(), my_robot.chain.getNrOfSegments(), NUMBER_OF_CONSTRAINTS);
+    // motion_specification my_2DOF_motion4(my_robot.chain.getNrOfJoints(), my_robot.chain.getNrOfSegments(), NUMBER_OF_CONSTRAINTS);
+    //
+    // std::cout << "Testing 2DOF robot model with 3 different solvers" << '\n'<<std::endl;
+    // std::cout << "2DOF robot friction torques:        ";
+    // for(int i=0; i<my_robot.chain.getNrOfJoints(); ++i)  std::cout << my_robot.joint_static_friction[i] << "  ";
+    // std::cout <<'\n'<<std::endl;
+    // test_3_solvers(my_robot,
+    //                 my_2DOF_motion1,
+    //                 my_2DOF_motion2,
+    //                 my_2DOF_motion3,
+    //                 my_2DOF_motion4, false);
+    // std::cout << " " << '\n'<<std::endl;
+
     extended_kinematic_chain five_DOF_robot;
     int result = create_my_5DOF_robot(five_DOF_robot);
     assert(result == 1);
-    motion_specification five_DOF_motion(five_DOF_robot.chain.getNrOfJoints(), five_DOF_robot.chain.getNrOfSegments(), NUMBER_OF_CONSTRAINTS);
+    motion_specification five_DOF_motion1(five_DOF_robot.chain.getNrOfJoints(), five_DOF_robot.chain.getNrOfSegments(), NUMBER_OF_CONSTRAINTS);
+    motion_specification five_DOF_motion2(five_DOF_robot.chain.getNrOfJoints(), five_DOF_robot.chain.getNrOfSegments(), NUMBER_OF_CONSTRAINTS);
+    motion_specification five_DOF_motion3(five_DOF_robot.chain.getNrOfJoints(), five_DOF_robot.chain.getNrOfSegments(), NUMBER_OF_CONSTRAINTS);
+    motion_specification five_DOF_motion4(five_DOF_robot.chain.getNrOfJoints(), five_DOF_robot.chain.getNrOfSegments(), NUMBER_OF_CONSTRAINTS);
 
-    extended_kinematic_chain LWR_robot;
-    create_my_LWR_robot(LWR_robot);
-    motion_specification LWR_motion(LWR_robot.chain.getNrOfJoints(), LWR_robot.chain.getNrOfSegments(), NUMBER_OF_CONSTRAINTS);
+    std::cout << "Testing 5DOF robot model with 3 different solvers" << '\n'<<std::endl;
+    std::cout << "5DOF robot friction torques:        ";
+    for(int i=0; i<five_DOF_robot.chain.getNrOfJoints(); ++i)  std::cout << five_DOF_robot.joint_static_friction[i] << "  ";
+    std::cout <<'\n'<<std::endl;
+    compare_acc_energy(five_DOF_robot, five_DOF_motion1);
 
-
-    // std::cout << "Testing 5DOF robot model with 3 different solvers" << '\n'<<std::endl;
-    // std::cout << "5DOF robot friction torques:        ";
-    // for(int i=0; i<five_DOF_robot.chain.getNrOfJoints(); ++i)  std::cout << five_DOF_robot.joint_static_friction[i] << "  ";
-    // std::cout <<'\n'<<std::endl;
-    // test_3_solvers(five_DOF_robot, five_DOF_motion, true);
+    // test_3_solvers(five_DOF_robot,
+    //                 five_DOF_motion1,
+    //                 five_DOF_motion2,
+    //                 five_DOF_motion3,
+    //                 five_DOF_motion4, false);
     // std::cout << " " << '\n'<<std::endl;
 
+    // extended_kinematic_chain LWR_robot;
+    // create_my_LWR_robot(LWR_robot);
+    // motion_specification LWR_motion1(LWR_robot.chain.getNrOfJoints(), LWR_robot.chain.getNrOfSegments(), NUMBER_OF_CONSTRAINTS);
+    // motion_specification LWR_motion2(LWR_robot.chain.getNrOfJoints(), LWR_robot.chain.getNrOfSegments(), NUMBER_OF_CONSTRAINTS);
+    // motion_specification LWR_motion3(LWR_robot.chain.getNrOfJoints(), LWR_robot.chain.getNrOfSegments(), NUMBER_OF_CONSTRAINTS);
+    // motion_specification LWR_motion4(LWR_robot.chain.getNrOfJoints(), LWR_robot.chain.getNrOfSegments(), NUMBER_OF_CONSTRAINTS);
+    //
     // std::cout << "Testing LWR robot model with 3 different solvers" << '\n'<<std::endl;
     // std::cout << "LWR friction torques:        ";
     // for(int i=0; i<LWR_robot.chain.getNrOfJoints(); ++i)  std::cout << LWR_robot.joint_static_friction[i] << "  ";
     // std::cout <<'\n'<<std::endl;
-    // test_3_solvers(LWR_robot, LWR_motion, false);
-    //
+    // test_in_loop_3_solvers(LWR_robot, LWR_motion1);
+    // test_3_solvers(LWR_robot,
+    //                 LWR_motion1,
+    //                 LWR_motion2,
+    //                 LWR_motion3,
+    //                 LWR_motion4, false);
     // std::cout << " " << '\n'<<std::endl;
-    //
+
+
     // std::cout << "Testing(FD) 2 robot models with the same extended Vereshchagin solver" << '\n'<<std::endl;
     // test_2_models_FD(five_DOF_robot, LWR_robot, five_DOF_motion, LWR_motion);
     //
