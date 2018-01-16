@@ -37,7 +37,7 @@ SOFTWARE.
 
 // const int NUMBER_OF_JOINTS = 2;
 // const int NUMBER_OF_SEGMENTS = 2;
-const int NUMBER_OF_CONSTRAINTS = 2;
+const int NUMBER_OF_CONSTRAINTS = 1;
 
 class extended_kinematic_chain
 {
@@ -143,6 +143,43 @@ void create_my_LWR_robot(extended_kinematic_chain &c)
     //In total 8 joints (counting fixed - 0), 8 segments (counting base link 0) and 9 frames
 }
 
+void create_my_1DOF_robot(extended_kinematic_chain &c)
+{
+    int number_of_joints = 1;
+    c.joint_inertia.resize(number_of_joints);
+    for (int i = 0; i < number_of_joints; i++) c.joint_inertia[i] = 0.1;
+
+    c.joint_static_friction.resize(number_of_joints);
+    for (int i = 0; i < number_of_joints; i++) c.joint_static_friction[i] = 5.0;
+
+    //Here joint 0 is moving - no fixed joints !
+    //1 joints, 1 segments
+    for (int i = 0; i < number_of_joints; i++) {
+
+        //last 3 inputs...input_scale, offset and joint inertia (d in paper)
+        KDL::Joint joint = KDL::Joint(KDL::Joint::RotZ, 1, 0, c.joint_inertia[i]);
+
+        // RPY(roll,pitch,yaw) Rotation built from Roll-Pitch-Yaw angles
+        KDL::Frame tip(KDL::Rotation::RPY(0.0, 0.0, 0.0), KDL::Vector(0.0, 0.4, 0.0));
+
+        //Frames desctibe pose of the segment tip, wrt joint frame
+        KDL::Segment segment = KDL::Segment(joint, tip);
+
+        //rotational inertia around symmetry axis of rotation
+        KDL::RotationalInertia rotational_inertia(0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+
+        //spatial inertia
+        // center of mass at the same position as tip  of segment???
+        KDL::RigidBodyInertia inertia(0.3, KDL::Vector(0.0, 0.4, 0.0), rotational_inertia);
+
+        segment.setInertia(inertia);
+
+        //adding segments in chain
+        c.chain.addSegment(segment);
+    }
+
+}
+
 void create_my_2DOF_robot(extended_kinematic_chain &c)
 {
     int number_of_joints = 2;
@@ -179,35 +216,34 @@ void create_my_2DOF_robot(extended_kinematic_chain &c)
         //adding segments in chain
         c.chain.addSegment(segment);
     }
-    // std::cout << c.chain.getNrOfJoints() << '\n';
-    // std::cout << c.chain.getNrOfSegments() << '\n';
+
 }
 
 void create_my_motion_specification(motion_specification &m)
 {
     m.q(0) = M_PI / 2.0;
-    m.q(1) = M_PI / 6.0;
-
-    m.qd(0) = 0.0;
-    m.qd(1) = 0.0;
+    // m.q(1) = M_PI / 6.0;
+    //
+    // m.qd(0) = 0.0;
+    // m.qd(1) = 0.0;
 
     m.feedforward_torque(0) = 0.0;
-    m.feedforward_torque(1) = 0.0;
+    // m.feedforward_torque(1) = 0.0;
 
     m.external_force[0] = KDL::Wrench();
-    m.external_force[1] = KDL::Wrench();
+    // m.external_force[1] = KDL::Wrench();
 
     KDL::Twist unit_constraint_force_x(
-            KDL::Vector(1.0, 0.0, 0.0),     // linear
+            KDL::Vector(0.0, 1.0, 0.0),     // linear
             KDL::Vector(0.0, 0.0, 0.0));    // angular
     m.end_effector_unit_constraint_forces.setColumn(0, unit_constraint_force_x);
     m.end_effector_acceleration_energy_setpoint(0) = 0.0;
-
-    KDL::Twist unit_constraint_force_y(
-            KDL::Vector(0.0, 1.0, 0.0),     // linear
-            KDL::Vector(0.0, 0.0, 0.0));    // angular
-    m.end_effector_unit_constraint_forces.setColumn(1, unit_constraint_force_y);
-    m.end_effector_acceleration_energy_setpoint(1) = 0.0;
+    //
+    // KDL::Twist unit_constraint_force_y(
+    //         KDL::Vector(0.0, 1.0, 0.0),     // linear
+    //         KDL::Vector(0.0, 0.0, 0.0));    // angular
+    // m.end_effector_unit_constraint_forces.setColumn(1, unit_constraint_force_y);
+    // m.end_effector_acceleration_energy_setpoint(1) = 0.0;
     // KDL::Twist unit_constraint_force_z(
     //         KDL::Vector(0.0, 0.0, 0.0),     // linear
     //         KDL::Vector(0.0, 0.0, 0.0));    // angular
@@ -427,7 +463,8 @@ int main(int argc, char* argv[])
 {
     extended_kinematic_chain my_robot;
     // create_my_LWR_robot(my_robot);
-    create_my_2DOF_robot(my_robot);
+    // create_my_2DOF_robot(my_robot);
+    create_my_1DOF_robot(my_robot);
     motion_specification my_motion(my_robot.chain.getNrOfJoints(), my_robot.chain.getNrOfSegments(), NUMBER_OF_CONSTRAINTS);
     create_my_motion_specification(my_motion);
 
@@ -437,27 +474,29 @@ int main(int argc, char* argv[])
     KDL::Vector angularAcc(0.0, 0.0, 0.0);
     KDL::Twist root_acc(linearAcc, angularAcc);
 
-    KDL::Solver_Vereshchagin ver_solver(my_robot.chain, root_acc, NUMBER_OF_CONSTRAINTS);
-    int result = ver_solver.CartToJnt(
-                 my_motion.q, my_motion.qd, my_motion.qdd, //qdd_ is overwritten by accual/resulting acceleration
-                 my_motion.end_effector_unit_constraint_forces,       // alpha
-                 my_motion.end_effector_acceleration_energy_setpoint, // beta
-                 my_motion.external_force,
-                 my_motion.feedforward_torque);  // tau_ is overwritten!
-         assert(result == 0);
-    std::cout << my_motion.qdd << '\n';
-    std::vector<KDL::Twist> xDotdot;
-    xDotdot.resize(my_robot.chain.getNrOfSegments()+1);
-    ver_solver.get_link_acceleration(xDotdot);
+    // KDL::Solver_Vereshchagin ver_solver(my_robot.chain, root_acc, NUMBER_OF_CONSTRAINTS);
+    // int result = ver_solver.CartToJnt(
+    //              my_motion.q, my_motion.qd, my_motion.qdd, //qdd_ is overwritten by accual/resulting acceleration
+    //              my_motion.end_effector_unit_constraint_forces,       // alpha
+    //              my_motion.end_effector_acceleration_energy_setpoint, // beta
+    //              my_motion.external_force,
+    //              my_motion.feedforward_torque);  // tau_ is overwritten!
+    //      assert(result == 0);
 
-    for (size_t i = 0; i < my_robot.chain.getNrOfSegments()+1; i++) {
-        std::cout << xDotdot[i] << '\n';
-    }
 
-    create_my_motion_specification(my_motion);
+    // std::cout << my_motion.qdd << '\n';
+    // std::vector<KDL::Twist> xDotdot;
+    // xDotdot.resize(my_robot.chain.getNrOfSegments()+1);
+    // ver_solver.get_link_acceleration(xDotdot);
+    //
+    // for (size_t i = 0; i < my_robot.chain.getNrOfSegments()+1; i++) {
+    //     std::cout << xDotdot[i] << '\n';
+    // }
+    //
+    // create_my_motion_specification(my_motion);
     vereshchagin_with_friction solver(my_robot, root_acc, NUMBER_OF_CONSTRAINTS);
     solver.solve(my_motion);
-    std::cout << my_motion.qdd << '\n';
+    // std::cout << my_motion.qdd << '\n';
 
 	return 0;
 }
