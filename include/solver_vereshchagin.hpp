@@ -74,6 +74,7 @@ public:
      */
     int CartToJnt(const JntArray &q, const JntArray &q_dot, JntArray &q_dotdot, const Jacobian& alfa, const JntArray& beta, const Wrenches& f_ext, JntArray &torques);
     void get_link_acceleration(Twists& xDotdot);
+    void get_transformed_link_acceleration(Twists& xDotdot);
     void get_link_inertias(Inertias &h);
     void get_bias_force(Wrenches &u);
     void get_control_torque(JntArray &tau_control);

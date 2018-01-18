@@ -403,7 +403,8 @@ void Solver_Vereshchagin::final_upwards_sweep(JntArray &q_dotdot, JntArray &torq
         //Is this form ok for the paper approach....or we should transformed everything in base frame????
         //s.acc is specified under segment info in h file!!
         //returns acceleration in link distal tip coordinates.
-        //For use needs to be transformed to root reference frame
+        //For use needs to be transformed to root(base) reference frame
+        //Check two getters for this
         s.acc = s.F.Inverse(a_p + s.Z * q_dotdot(j) + s.C);
 
         if (chain.getSegment(i - 1).getJoint().getType() != Joint::None)
@@ -420,8 +421,20 @@ void Solver_Vereshchagin::get_link_acceleration(Twists& xDotdot)
     assert(xDotdot.size() == ns + 1);
     xDotdot[0] = acc_root;
     for (int i = 1; i < ns + 1; i++) {
+        xDotdot[i] = results[i].acc;
+    }
+}
+
+//Returns cartesian acceleration of links in robot base coordinates
+void Solver_Vereshchagin::get_transformed_link_acceleration(Twists& xDotdot)
+{
+    //Assersions need to be replaced with run-time errors!
+    //For example errors specified in SolverI class
+    //Because KDL compiles in RELEASE mode!
+    assert(xDotdot.size() == ns + 1);
+    xDotdot[0] = acc_root;
+    for (int i = 1; i < ns + 1; i++) {
         xDotdot[i] = results[i].F_base.M * results[i].acc;
-        // xDotdot[i] = results[i].acc;
     }
 }
 
