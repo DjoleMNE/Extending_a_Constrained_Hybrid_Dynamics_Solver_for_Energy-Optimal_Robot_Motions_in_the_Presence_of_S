@@ -86,6 +86,7 @@ class vereshchagin_with_friction {
 		extended_kinematic_chain chain_;
 
 		std::vector<KDL::Twist> frame_acceleration_;
+        std::vector<KDL::Twist> transformed_frame_acceleration_;
 		std::vector<KDL::ArticulatedBodyInertia> articulated_body_inertia_;
 		KDL::Wrenches bias_force_;
 		KDL::JntArray control_tau_;

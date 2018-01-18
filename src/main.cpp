@@ -517,11 +517,11 @@ void test_3_solvers(extended_kinematic_chain &my_robot,
                  motion2.end_effector_acceleration_energy_setpoint, // beta
                  motion2.external_force,
                  motion2.feedforward_torque); // without friction
-     assert(result2 == 0);
+    assert(result2 == 0);
 
     std::vector<KDL::Twist> xDotdot;
     xDotdot.resize(my_robot.chain.getNrOfSegments()+1);
-    ver_solver.get_link_acceleration(xDotdot);
+    ver_solver.get_transformed_link_acceleration(xDotdot);
 
     for (size_t i = 0; i < my_robot.chain.getNrOfSegments()+1; i++) {
         std::cout << xDotdot[i] << '\n';
@@ -743,7 +743,7 @@ void compare_acc_energy(extended_kinematic_chain &my_robot,
      articulated_body_inertia_.resize(my_robot.chain.getNrOfSegments()+1);
      KDL::Wrenches bias_force_(my_robot.chain.getNrOfSegments()+1);
 
-     ver_solver.get_link_acceleration(xDotdot);
+     ver_solver.get_transformed_link_acceleration(xDotdot);
      ver_solver.get_link_inertias(articulated_body_inertia_);
      ver_solver.get_bias_force(bias_force_);
 
@@ -793,7 +793,7 @@ void test_singular_configuration(){
 
     std::vector<KDL::Twist> xDotdot;
     xDotdot.resize(LWR_robot.chain.getNrOfSegments()+1);
-    ver_solver.get_link_acceleration(xDotdot);
+    ver_solver.get_transformed_link_acceleration(xDotdot);
     for (int i = 0; i < LWR_robot.chain.getNrOfSegments()+1; i++) {
         std::cout << xDotdot[i] << '\n';
     }
@@ -817,7 +817,7 @@ void test_singular_configuration(){
                  LWR_motion.feedforward_torque); // without friction
 
     assert(result2 == 0);
-    ver_solver2.get_link_acceleration(xDotdot);
+    ver_solver2.get_transformed_link_acceleration(xDotdot);
     for (int i = 0; i < LWR_robot.chain.getNrOfSegments()+1; i++) {
         std::cout << xDotdot[i] << '\n';
     }

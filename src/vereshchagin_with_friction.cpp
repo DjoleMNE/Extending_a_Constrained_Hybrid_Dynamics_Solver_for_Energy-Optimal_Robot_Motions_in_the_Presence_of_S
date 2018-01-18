@@ -50,6 +50,7 @@ vereshchagin_with_friction::vereshchagin_with_friction(
 	    number_of_frames_ = chain.chain.getNrOfSegments() + 1;
 	    number_of_joints_ = chain_.chain.getNrOfJoints();
 	    frame_acceleration_.resize(number_of_frames_);
+        transformed_frame_acceleration_.resize(number_of_frames_);
         true_frame_acceleration_.resize(number_of_frames_);
 	    articulated_body_inertia_.resize(number_of_frames_);
 	    bias_force_.resize(number_of_frames_);
@@ -120,6 +121,7 @@ void vereshchagin_with_friction::iterate_over_torques(
              assert(result == 0);
 
         solver_.get_link_acceleration(frame_acceleration_);
+        solver_.get_transformed_link_acceleration(transformed_frame_acceleration_);
         solver_.get_link_inertias(articulated_body_inertia_);
         solver_.get_bias_force(bias_force_);
         solver_.get_control_torque(control_tau_);
@@ -145,7 +147,7 @@ void vereshchagin_with_friction::iterate_over_torques(
             optimum_friction_tau_ = resulting_set;
             true_control_torques = control_tau_;
             true_joint_acc = qdd_;
-            true_frame_acceleration_ = frame_acceleration_;
+            true_frame_acceleration_ = transformed_frame_acceleration_;
         }
 
         return;
