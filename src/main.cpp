@@ -410,8 +410,8 @@ void create_constrained_motion_specification(motion_specification &m)
     int number_of_segments = m.external_force.size();
 
     // m.q(0) = M_PI / 2.0;
-    m.q(1) = M_PI / 2.0;
     m.q(0) = 0.0;
+    m.q(1) = M_PI / 2.0;
     // m.q(1) = 0.0;
     m.q(2) = M_PI / 6.0;
     m.q(3) = M_PI / 3.0;
@@ -481,6 +481,7 @@ void test_3_solvers(extended_kinematic_chain &my_robot,
                     motion_specification &motion4,
                     bool total_effort = false)
 {
+
     KDL::Vector linearAcc(0.0, 0.0, -9.81); //gravitational acceleration along Z of arm root
     KDL::Vector angularAcc(0.0, 0.0, 0.0);
     KDL::Twist root_acc(linearAcc, angularAcc);
@@ -490,15 +491,15 @@ void test_3_solvers(extended_kinematic_chain &my_robot,
     vereshchagin_with_friction extended_solver(my_robot, root_acc, NUMBER_OF_CONSTRAINTS);
     extended_solver.solve(motion1);
 
-    std::cout << "Frame acc" << '\n';
+    std::cout << "Extended Vereshchagin solver" << '\n';
+    std::cout << "Frame Acc" << '\n';
     for (size_t i = 0; i < my_robot.chain.getNrOfSegments()+1; i++) {
         std::cout << extended_solver.true_frame_acceleration_[i] << '\n';
     }
 
-    std::cout << "Extended Joint Acc" << '\n';
+    std::cout << "\n"<<"Joint Acc" << '\n';
     std::cout << extended_solver.true_joint_acc << '\n';
-    std::cout << "Extended Vereshchagin solver" << '\n';
-    std::cout << "Joint torques:        "<<extended_solver.true_control_torques << '\n';
+    std::cout <<"\n" <<"Joint torques:        "<<extended_solver.true_control_torques << '\n';
     std::cout << " " << '\n';
 
     //Original solver
@@ -519,21 +520,21 @@ void test_3_solvers(extended_kinematic_chain &my_robot,
                  motion2.feedforward_torque); // without friction
     assert(result2 == 0);
 
+    std::cout << "Original Vereshchagin solver" << '\n';
     std::vector<KDL::Twist> xDotdot;
     xDotdot.resize(my_robot.chain.getNrOfSegments()+1);
     ver_solver.get_transformed_link_acceleration(xDotdot);
 
+    std::cout << "Frame ACC" << '\n';
     for (size_t i = 0; i < my_robot.chain.getNrOfSegments()+1; i++) {
         std::cout << xDotdot[i] << '\n';
     }
 
-    std::cout << "\n" << '\n';
-    std::cout << "Original Acc joint" << '\n';
+    std::cout << "\n"<<" Acc joint" << '\n';
     std::cout << motion2.qdd << '\n';
 
     ver_solver.get_control_torque(control_torque_Ver);
-    std::cout << "Original Vereshchagin solver" << '\n';
-    std::cout << "Joint torques:        "<<control_torque_Ver << '\n';
+    std::cout <<"\n" <<"Joint torques:        "<<control_torque_Ver << '\n';
 
     if(total_effort){
         std::vector<double> full_effort(my_robot.chain.getNrOfJoints());
@@ -550,51 +551,35 @@ void test_3_solvers(extended_kinematic_chain &my_robot,
     // std::cout << nu << '\n';
 
     //RNE solver
-    // KDL::Vector linearAcc_RNE(0.0, 0.0, -9.81);
-    // KDL::ChainIdSolver_RNE RNE_idsolver(my_robot.chain, linearAcc_RNE);
-    // KDL::JntArray control_torque_RNE(my_robot.chain.getNrOfJoints());
-    // KDL::JntArray input_qdd(my_robot.chain.getNrOfJoints());
-    //
-    // create_input_FD_specification(motion3, control_torque_Ver);
-    //
-    // int result3 = RNE_idsolver.CartToJnt(
-    //                     motion3.q,
-    //                     motion3.qd,
-    //                     motion3.qdd,
-    //                     motion3.external_force,
-    //                     control_torque_RNE);
 
-    // assert(result3 == 0);
+    KDL::Vector linearAcc_RNE(0.0, 0.0, -9.81);
+    KDL::ChainIdSolver_RNE RNE_idsolver(my_robot.chain, linearAcc_RNE);
+    KDL::JntArray control_torque_RNE(my_robot.chain.getNrOfJoints());
+    KDL::JntArray input_qdd(my_robot.chain.getNrOfJoints());
 
-    // std::cout << "Recursive Newton Euler solver" << '\n';
-    // std::cout << "Joint torques:        "<<control_torque_RNE << '\n';
-    // if(total_effort){
-    //     std::vector<double> full_effort(my_robot.chain.getNrOfJoints());
-    //     std::cout << "Total effort:           ";
-    //     for(int i = 0; i < my_robot.chain.getNrOfJoints(); i++){
-    //         full_effort[i] = control_torque_RNE(i) + my_robot.joint_static_friction[i] * sign_of(control_torque_RNE(i));
-    //         std::cout <<full_effort[i] << "    ";
-    //     }
-    //     std::cout << "\n";
-    // }
+    create_constrained_motion_specification(motion3);
 
-    // create_input_FD_specification(motion4, control_torque_RNE);
-    // int result4 = ver_solver.CartToJnt(
-    //              motion4.q, motion4.qd, motion4.qdd,
-    //              motion4.end_effector_unit_constraint_forces,       // alpha
-    //              motion4.end_effector_acceleration_energy_setpoint, // beta
-    //              motion4.external_force,
-    //              motion4.feedforward_torque); // without friction
-    //
-    // std::vector<KDL::Twist> xDotdot;
-    // xDotdot.resize(my_robot.chain.getNrOfSegments()+1);
-    // ver_solver.get_link_acceleration(xDotdot);
-    //
-    // std::cout << "Link ACC" << '\n';
-    // for (size_t i = 0; i < my_robot.chain.getNrOfSegments()+1; i++) {
-    //     std::cout << xDotdot[i] << '\n';
-    // }
-    // std::cout << motion4.qdd << '\n';
+    int result3 = RNE_idsolver.CartToJnt(
+                        motion3.q,
+                        motion3.qd,
+                        motion2.qdd,
+                        motion3.external_force,
+                        control_torque_RNE);
+
+    assert(result3 == 0);
+
+    std::cout <<"\n" <<"Recursive Newton Euler solver" << '\n';
+    std::cout << "Joint torques:        "<<control_torque_RNE << '\n';
+
+    if(total_effort){
+        std::vector<double> full_effort_RNE(my_robot.chain.getNrOfJoints());
+        std::cout << "Total effort:           ";
+        for(int i = 0; i < my_robot.chain.getNrOfJoints(); i++){
+            full_effort_RNE[i] = control_torque_RNE(i) + my_robot.joint_static_friction[i] * sign_of(control_torque_RNE(i));
+            std::cout <<full_effort_RNE[i] << "    ";
+        }
+        std::cout << "\n";
+    }
 
 }
 
@@ -887,7 +872,7 @@ int main(int argc, char* argv[])
                     LWR_motion1,
                     LWR_motion2,
                     LWR_motion3,
-                    LWR_motion4, false);
+                    LWR_motion4, true);
     std::cout << " " << '\n'<<std::endl;
 
 

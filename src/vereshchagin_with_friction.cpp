@@ -58,6 +58,7 @@ vereshchagin_with_friction::vereshchagin_with_friction(
 	    true_control_torques.resize(number_of_joints_);
 	    true_joint_acc.resize(number_of_joints_);
 	    max_acc_energy = 0;
+        final_acc_energy = 0;
 	}
 
 void vereshchagin_with_friction::solve(motion_specification &m){

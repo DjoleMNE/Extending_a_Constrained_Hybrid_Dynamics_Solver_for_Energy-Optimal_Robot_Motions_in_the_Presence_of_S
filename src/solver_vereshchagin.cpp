@@ -43,11 +43,13 @@ using namespace Eigen;
 Solver_Vereshchagin::Solver_Vereshchagin(const Chain& chain_, Twist root_acc, unsigned int _nc) :
     chain(chain_), nj(chain.getNrOfJoints()), ns(chain.getNrOfSegments()), nc(_nc),
     results(ns + 1, segment_info(nc))
-    //nc ---number of constraints???
 {
     acc_root = root_acc;
 
     //Provide the necessary memory for computing the inverse of M0
+    //It should be made  with constant number of rows/columns..6x6
+    //A user can change task in run-time...
+    //In this way it would require to call Constructor each time!
     nu_sum.resize(nc);
     controlTorque.resize(nj);
     M_0_inverse.resize(nc, nc);
@@ -268,10 +270,8 @@ void Solver_Vereshchagin::downwards_sweep(const Jacobian& alfa, const JntArray &
             //projection of coriolis and centrepital forces into joint subspace (0 0 Z)
             s.totalBias = -dot(s.Z, s.R + s.PC);
             s.u = torques(j) + s.totalBias;
-            //here in torques we can give our forces for friction??????
-            //yes we give task_ff_torque + friction
 
-            //Matrix form of Z, put rotations above translations
+            //Matrix form of Z
             Vector6d vZ;
             vZ << Vector3d::Map(s.Z.rot.data), Vector3d::Map(s.Z.vel.data);
             s.EZ.noalias() = s.E.transpose() * vZ;
@@ -384,11 +384,13 @@ void Solver_Vereshchagin::final_upwards_sweep(JntArray &q_dotdot, JntArray &torq
         //final control value for torque???...nope!!!! only constraints!!!
         //Fina control tau consists of 3 parts!!!
 
-        //Code Line bellow commented by Djordje Vukcevic -> to avoid overwriting ff_torques
+        //Code line bellow commented by Djordje Vukcevic ->
+        // -> to avoid overwriting ff_torques ->
+        // -> Required for extension with friction.
         // torques(j) = constraint_torque;
 
-        //Summing all contributions for total control torque of parent joints,
-        // constraint forces and nullspace forces.
+        //Summing all contributions for total control torque:
+        //forces from parent joints, constraint forces and nullspace forces.
         //equation g) qdotdot[i] = D^-1(u - Z'(P*acc[i-1] + E*nu) Vereshchagin89'
         controlTorque(j) = s.u + parent_forceProjection + constraint_torque;
 
