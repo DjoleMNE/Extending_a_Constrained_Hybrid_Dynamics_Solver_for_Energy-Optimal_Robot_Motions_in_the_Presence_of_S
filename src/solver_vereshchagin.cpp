@@ -296,6 +296,9 @@ void Solver_Vereshchagin::constraint_calculation(const JntArray& beta)
     //std::cout<<"augmented M0: "<<results[0].M<<std::endl;
 
     //ToDo: Need to check ill conditions
+    //IMPORTANT!!! If M looses its rank, this SVD will not return error.
+    //But not full rank of M can mean that given task is not feasable
+    //Or initial configuration of the robot is singular!!!!
 
     //M_0_inverse=results[0].M.inverse();
     int result  = svd_eigen_HH(results[0].M, Um, Sm, Vm, tmpm);
@@ -321,6 +324,7 @@ void Solver_Vereshchagin::constraint_calculation(const JntArray& beta)
 
     //equation f) nu = M_0_inverse*(beta_N - E0_tilde`*acc0 - G0)
     nu.noalias() = M_0_inverse * nu_sum;
+    // std::cout << nu << '\n';
 }
 
 /**
