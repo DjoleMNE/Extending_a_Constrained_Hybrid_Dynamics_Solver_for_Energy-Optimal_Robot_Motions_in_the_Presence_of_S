@@ -99,7 +99,6 @@ void Solver_Vereshchagin::initial_upwards_sweep(const JntArray &q, const JntArra
 {
     //if (q.rows() != nj || qdot.rows() != nj || qdotdot.rows() != nj || f_ext.size() != ns)
     //        return -1;
-
     unsigned int j = 0;
     F_total = Frame::Identity();
     for (unsigned int i = 0; i < ns; i++)
@@ -297,8 +296,11 @@ void Solver_Vereshchagin::constraint_calculation(const JntArray& beta)
 
     //ToDo: Need to check ill conditions
     //IMPORTANT!!! If M looses its rank, this SVD will not return error.
-    //But not full rank of M can mean that given task is not feasable
+    //But not full rank of M can mean that given task is not feasible
     //Or initial configuration of the robot is singular!!!!
+    //Overall _> even if everthing is ok with initial configuration and
+    //task specification, matrix can be ill conditioned
+    //which can result in not completely correct results
 
     //M_0_inverse=results[0].M.inverse();
     int result  = svd_eigen_HH(results[0].M, Um, Sm, Vm, tmpm);
@@ -324,7 +326,6 @@ void Solver_Vereshchagin::constraint_calculation(const JntArray& beta)
 
     //equation f) nu = M_0_inverse*(beta_N - E0_tilde`*acc0 - G0)
     nu.noalias() = M_0_inverse * nu_sum;
-    // std::cout << nu << '\n';
 }
 
 /**
@@ -401,9 +402,9 @@ void Solver_Vereshchagin::final_upwards_sweep(JntArray &q_dotdot, JntArray &torq
         //how to access this s.acc??? is it in terms of KDL??? is it used somewhere else ????
         //Is this form ok for the paper approach....or we should transformed everything in base frame????
         //s.acc is specified under segment info in h file!!
-        //returns acceleration in link distal tip coordinates. For use needs to be transformed
+        //returns acceleration in link distal tip coordinates.
+        //For use needs to be transformed to root reference frame
         s.acc = s.F.Inverse(a_p + s.Z * q_dotdot(j) + s.C);
-        //Here full control tau is included and acc is due to that tau
 
         if (chain.getSegment(i - 1).getJoint().getType() != Joint::None)
             j++;
@@ -419,7 +420,8 @@ void Solver_Vereshchagin::get_link_acceleration(Twists& xDotdot)
     assert(xDotdot.size() == ns + 1);
     xDotdot[0] = acc_root;
     for (int i = 1; i < ns + 1; i++) {
-        xDotdot[i] = results[i].acc;
+        xDotdot[i] = results[i].F_base.M * results[i].acc;
+        // xDotdot[i] = results[i].acc;
     }
 }
 
