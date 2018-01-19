@@ -113,7 +113,6 @@ void create_my_LWR_robot(extended_kinematic_chain &c)
     for (int i = 0; i < number_of_joints; i++) c.joint_inertia[i] = 0.5;
 
     c.joint_static_friction.resize(number_of_joints);
-    // for (int i = 0; i < number_of_joints; i++) c.joint_static_friction[i] = 10.0;
     c.joint_static_friction = {2.52,  1.912,  0.972,  0.6,  0.354,  0.354,  0.177};
 
     // Frames describe pose of the segment(base link) 0 tip, wrt joint 0 frame (inertial frame) - frame 0
@@ -340,15 +339,14 @@ void create_input_FD_specification(motion_specification &m, KDL::JntArray &ff_to
     int number_of_joints = m.q.rows();
     int number_of_segments = m.external_force.size();
 
-    // m.q(0) = M_PI / 2.0;
-    // m.q(1) = M_PI / 6.0;
-    m.q(0) = 0.0;
-    m.q(1) = 0.0;
-    m.q(2) = M_PI / 6.0;
-    m.q(3) = M_PI / 6.0;
-    m.q(4) = M_PI / 6.0;
-    m.q(5) = M_PI / 6.0;
-
+    m.q(0) = M_PI / 2.0;
+    // m.q(0) = 0.0;
+    m.q(1) = M_PI / 2.0;
+    // m.q(1) = 0.0;
+    m.q(2) = M_PI / 1.0;
+    m.q(3) = -M_PI / 2.0;
+    m.q(4) = -M_PI / 3.0;
+    m.q(5) = M_PI / 4.0;
 
     // for (int i = 0; i < number_of_joints; i++) m.q(i) = 0.0;
     for (int i = 0; i < number_of_joints; i++) m.qd(i) = 0.0;
@@ -409,14 +407,14 @@ void create_constrained_motion_specification(motion_specification &m)
     int number_of_joints = m.q.rows();
     int number_of_segments = m.external_force.size();
 
-    // m.q(0) = M_PI / 2.0;
-    m.q(0) = 0.0;
+    m.q(0) = M_PI / 2.0;
+    // m.q(0) = 0.0;
     m.q(1) = M_PI / 2.0;
     // m.q(1) = 0.0;
-    m.q(2) = M_PI / 6.0;
-    m.q(3) = M_PI / 3.0;
-    m.q(4) = M_PI / 3.0;
-    m.q(5) = M_PI / 6.0;
+    m.q(2) = M_PI / 1.0;
+    m.q(3) = -M_PI / 2.0;
+    m.q(4) = -M_PI / 3.0;
+    m.q(5) = M_PI / 4.0;
 
     // for (int i = 0; i < number_of_joints; i++) m.q(i) = 0.0;
     for (int i = 0; i < number_of_joints; i++) m.qd(i) = 0.0;
@@ -670,22 +668,24 @@ void test_in_loop_3_solvers(extended_kinematic_chain &my_robot,
 }
 
 void compare_acc_energy(extended_kinematic_chain &my_robot,
-                    motion_specification &motion)
+                        motion_specification &motion1,
+                        motion_specification &motion2,
+                        motion_specification &motion3)
 {
     KDL::Vector linearAcc(0.0, 0.0, -9.81); //gravitational acceleration along Z of arm root
     KDL::Vector angularAcc(0.0, 0.0, 0.0);
     KDL::Twist root_acc(linearAcc, angularAcc);
 
-    create_constrained_motion_specification(motion);
-
-    //Extended solver
-    vereshchagin_with_friction extended_solver(my_robot, root_acc, NUMBER_OF_CONSTRAINTS);
-    extended_solver.solve(motion);
-    double acc_energy_extended = extended_solver.final_acc_energy;
-
-    std::cout << "Extended Solver Acc Energy" << '\n';
-    std::cout <<acc_energy_extended << '\n';
-    std::cout << " " << '\n';
+    // create_constrained_motion_specification(motion1);
+    //
+    // //Extended solver
+    // vereshchagin_with_friction extended_solver(my_robot, root_acc, NUMBER_OF_CONSTRAINTS);
+    // extended_solver.solve(motion1);
+    // double acc_energy_extended = extended_solver.final_acc_energy;
+    //
+    // std::cout << "Extended Solver Acc Energy" << '\n';
+    // std::cout <<acc_energy_extended << '\n';
+    // std::cout << " " << '\n';
 
     //Original solver
     KDL::Solver_Vereshchagin ver_solver(my_robot.chain,
@@ -694,49 +694,69 @@ void compare_acc_energy(extended_kinematic_chain &my_robot,
                                             KDL::Vector(0.0, 0.0, 0.0)),
                                         NUMBER_OF_CONSTRAINTS);
 
-    create_constrained_motion_specification(motion);
+    create_constrained_motion_specification(motion2);
 
     int result2 = ver_solver.CartToJnt(
-                 motion.q, motion.qd, motion.qdd,
-                 motion.end_effector_unit_constraint_forces,       // alpha
-                 motion.end_effector_acceleration_energy_setpoint, // beta
-                 motion.external_force,
-                 motion.feedforward_torque); // without friction
+                 motion2.q, motion2.qd, motion2.qdd,
+                 motion2.end_effector_unit_constraint_forces,       // alpha
+                 motion2.end_effector_acceleration_energy_setpoint, // beta
+                 motion2.external_force,
+                 motion2.feedforward_torque); // without friction
 
-     assert(result2 == 0);
+    assert(result2 == 0);
 
-     ver_solver.get_control_torque(motion.feedforward_torque);
+    std::cout << "\n"<<"Joint acc: " <<motion2.qdd <<'\n';
 
-     for(int i = 0; i < my_robot.chain.getNrOfJoints(); i++){
-         motion.feedforward_torque(i) = motion.feedforward_torque(i) + my_robot.joint_static_friction[i] * sign_of(motion.feedforward_torque(i));
-     }
+    KDL::JntArray control_torque_Ver(my_robot.chain.getNrOfJoints());
 
-     create_input_FD_specification(motion, motion.feedforward_torque);
+    ver_solver.get_control_torque(control_torque_Ver);
+    std::cout <<"\n" <<"Joint torques:        "<<control_torque_Ver << '\n';
 
-     result2 = ver_solver.CartToJnt(
-                  motion.q, motion.qd, motion.qdd,
-                  motion.end_effector_unit_constraint_forces,       // alpha
-                  motion.end_effector_acceleration_energy_setpoint, // beta
-                  motion.external_force,
-                  motion.feedforward_torque); // without friction
+    //Original FD solver
+    KDL::Solver_Vereshchagin FD_solver(my_robot.chain,
+                                        KDL::Twist(
+                                            KDL::Vector(0.0, 0.0, -9.81),
+                                            KDL::Vector(0.0, 0.0, 0.0)),
+                                        NUMBER_OF_CONSTRAINTS);
 
-      assert(result2 == 0);
+    // for(int i = 0; i < my_robot.chain.getNrOfJoints(); i++){
+    //     motion3.feedforward_torque(i) = control_torque_Ver(i) + \
+    //     my_robot.joint_static_friction[i] * sign_of(control_torque_Ver(i));
+    // }
+    // create_input_FD_specification(motion3, motion3.feedforward_torque);
 
-     std::vector<KDL::Twist> xDotdot;
-     xDotdot.resize(my_robot.chain.getNrOfSegments()+1);
-     std::vector<KDL::ArticulatedBodyInertia> articulated_body_inertia_;
-     articulated_body_inertia_.resize(my_robot.chain.getNrOfSegments()+1);
-     KDL::Wrenches bias_force_(my_robot.chain.getNrOfSegments()+1);
+    create_input_FD_specification(motion3, control_torque_Ver);
 
-     ver_solver.get_transformed_link_acceleration(xDotdot);
-     ver_solver.get_link_inertias(articulated_body_inertia_);
-     ver_solver.get_bias_force(bias_force_);
+    int result3 = FD_solver.CartToJnt(
+                 motion3.q, motion3.qd, motion3.qdd,
+                 motion3.end_effector_unit_constraint_forces,       // alpha
+                 motion3.end_effector_acceleration_energy_setpoint, // beta
+                 motion3.external_force,
+                 motion3.feedforward_torque); // without friction
 
-     double acc_energy_original = compute_acc_energy(my_robot,
-                                         xDotdot,
-                                         articulated_body_inertia_,
-                                         bias_force_, motion.qdd,
-                                         motion.feedforward_torque);
+    assert(result3 == 0);
+
+    std::cout << "\n"<<"Joint acc: " <<motion3.qdd <<'\n';
+    // for(int i = 0; i < my_robot.chain.getNrOfJoints(); i++){
+    //     motion2.feedforward_torque(i) = motion2.feedforward_torque(i) - \
+    //     my_robot.joint_static_friction[i] * sign_of(motion2.qdd(i));
+    // }
+    //
+    // std::vector<KDL::Twist> xDotdot;
+    // xDotdot.resize(my_robot.chain.getNrOfSegments()+1);
+    // std::vector<KDL::ArticulatedBodyInertia> articulated_body_inertia_;
+    // articulated_body_inertia_.resize(my_robot.chain.getNrOfSegments()+1);
+    // KDL::Wrenches bias_force_(my_robot.chain.getNrOfSegments()+1);
+    //
+    // ver_solver.get_link_acceleration(xDotdot);
+    // ver_solver.get_link_inertias(articulated_body_inertia_);
+    // ver_solver.get_bias_force(bias_force_);
+    //
+    // double acc_energy_original = compute_acc_energy(my_robot,
+    //                                  xDotdot,
+    //                                  articulated_body_inertia_,
+    //                                  bias_force_, motion2.qdd,
+    //                                  motion2.feedforward_torque);
     // std::cout << "\n" << '\n';
     // for (int i = 0; i < my_robot.chain.getNrOfSegments()+1; i++) {
     //     std::cout << xDotdot[i] << '\n';
@@ -748,8 +768,8 @@ void compare_acc_energy(extended_kinematic_chain &my_robot,
     //     std::cout << motion.qdd(i) << '\n';
     // }
 
-    std::cout << "Original Solver Acc Energy" << '\n';
-    std::cout << acc_energy_original << '\n';
+    // std::cout << "Original Solver Acc Energy" << '\n';
+    // std::cout << acc_energy_original << '\n';
 }
 
 void test_singular_configuration(){
@@ -867,7 +887,6 @@ int main(int argc, char* argv[])
     std::cout << "LWR friction torques:        ";
     for(int i=0; i<LWR_robot.chain.getNrOfJoints(); ++i)  std::cout << LWR_robot.joint_static_friction[i] << "  ";
     std::cout <<'\n'<<std::endl;
-    // test_in_loop_3_solvers(LWR_robot, LWR_motion1);
     test_3_solvers(LWR_robot,
                     LWR_motion1,
                     LWR_motion2,
@@ -875,6 +894,9 @@ int main(int argc, char* argv[])
                     LWR_motion4, true);
     std::cout << " " << '\n'<<std::endl;
 
+    // compare_acc_energy(LWR_robot, LWR_motion1, LWR_motion2, LWR_motion3);
+
+    // test_in_loop_3_solvers(LWR_robot, LWR_motion1);
 
     // std::cout << "Testing(FD) 2 robot models with the same extended Vereshchagin solver" << '\n'<<std::endl;
     // test_2_models_FD(five_DOF_robot, LWR_robot, five_DOF_motion, LWR_motion);

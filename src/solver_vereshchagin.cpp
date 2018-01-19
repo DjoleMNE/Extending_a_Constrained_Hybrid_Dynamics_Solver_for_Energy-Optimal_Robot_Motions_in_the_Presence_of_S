@@ -373,25 +373,21 @@ void Solver_Vereshchagin::final_upwards_sweep(JntArray &q_dotdot, JntArray &torq
 
         //TODO
         //Maybe only valid for simulation....????
-        //Should the constaint torque become feedforward torque in next iteration??? NO!!!!!!!!!
+        //Should the constaint torque become feedforward torque in next iteration???
         //Does that have phisical meaning >>????
         //I thnk it is not ok because the constraint forces are always included/defined separately in each iteration
         // We need constraints torques as output  for example keeping balance in legs-posture!!!!!
         //But the  question is do we need it for simulation of motion....for example to sent it Forward dyn algorithm
-        //But will will those constraint torques be enough to desctibe system motion in simulation...not only constaints  influence motions
+        //But will those constraint torques be enough to desctibe system motion in simulation...not only constaints  influence motions
         // also gravity and friction in joints..question is will these torques actually move the arm which is imposed to friction and gravity forces???
-        //Due to this conflict the implementation  of the algorithm needs to be changed.
-        //final control value for torque???...nope!!!! only constraints!!!
-        //Fina control tau consists of 3 parts!!!
 
         //Code line bellow commented by Djordje Vukcevic ->
         // -> to avoid overwriting ff_torques ->
         // -> Required for extension with friction.
         // torques(j) = constraint_torque;
 
-        //Summing all contributions for total control torque:
+        //Summing all 3 contributions for true(resulting) torque:
         //forces from parent joints, constraint forces and nullspace forces.
-        //equation g) qdotdot[i] = D^-1(u - Z'(P*acc[i-1] + E*nu) Vereshchagin89'
         controlTorque(j) = s.u + parent_forceProjection + constraint_torque;
 
         s.constAccComp = constraint_torque / s.D;
@@ -399,11 +395,10 @@ void Solver_Vereshchagin::final_upwards_sweep(JntArray &q_dotdot, JntArray &torq
 
         //total joint space acceleration resulting from accelerations of parent joints, constraint forces and
         // nullspace forces.
+        //equation g) qdotdot[i] = D^-1(u - Z'(P*acc[i-1] + E*nu) Vereshchagin89'
         q_dotdot(j) = (s.nullspaceAccComp + parentAccComp + s.constAccComp);
 
         //how to access this s.acc??? is it in terms of KDL??? is it used somewhere else ????
-        //Is this form ok for the paper approach....or we should transformed everything in base frame????
-        //s.acc is specified under segment info in h file!!
         //returns acceleration in link distal tip coordinates.
         //For use needs to be transformed to root(base) reference frame
         //Check two getters for this
