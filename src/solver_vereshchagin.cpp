@@ -52,6 +52,7 @@ Solver_Vereshchagin::Solver_Vereshchagin(const Chain& chain_, Twist root_acc, un
     //In this way it would require to call Constructor each time!
     nu_sum.resize(nc);
     controlTorque.resize(nj);
+    constraintTorque.resize(nj);
     M_0_inverse.resize(nc, nc);
     Um = MatrixXd::Identity(nc, nc);
     Vm = MatrixXd::Identity(nc, nc);
@@ -387,8 +388,9 @@ void Solver_Vereshchagin::final_upwards_sweep(JntArray &q_dotdot, JntArray &torq
         // torques(j) = constraint_torque;
 
         //Summing all 3 contributions for true(resulting) torque:
-        //forces from parent joints, constraint forces and nullspace forces.
-        controlTorque(j) = s.u + parent_forceProjection + constraint_torque;
+        //forces from parent joints, constraint forces and bias forces.
+        controlTorque(j) = (-1) * s.totalBias + dot(s.Z, parent_force) + dot(s.Z, constraint_force);
+        constraintTorque(j) = dot(s.Z, constraint_force);
 
         s.constAccComp = constraint_torque / s.D;
         s.nullspaceAccComp = s.u / s.D;
@@ -471,6 +473,16 @@ void Solver_Vereshchagin::get_control_torque(JntArray &tau_control)
 
     assert(tau_control.rows() == controlTorque.rows());
     for (int i = 0; i < nj; i++) tau_control(i) = controlTorque(i);
+}
+
+void Solver_Vereshchagin::get_constraint_torque(JntArray &tau_constraint)
+{
+    //Assersions need to be replaced with run-time errors!
+    //For example errors specified in SolverI class
+    //Because KDL compiles in RELEASE mode!
+
+    assert(tau_constraint.rows() == constraintTorque.rows());
+    for (int i = 0; i < nj; i++) tau_constraint(i) = constraintTorque(i);
 }
 
 void Solver_Vereshchagin::get_constraint_magnitude(Eigen::VectorXd &nu_)

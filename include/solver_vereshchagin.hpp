@@ -78,6 +78,7 @@ public:
     void get_link_inertias(Inertias &h);
     void get_bias_force(Wrenches &u);
     void get_control_torque(JntArray &tau_control);
+    void get_constraint_torque(JntArray &tau_constraint);
     void get_constraint_magnitude(Eigen::VectorXd &nu_);
 
 private:
@@ -115,6 +116,7 @@ private:
     Eigen::MatrixXd Vm;
     JntArray beta_N;
     JntArray controlTorque;
+    JntArray constraintTorque;
     Eigen::VectorXd nu;
     Eigen::VectorXd nu_sum;
     Eigen::VectorXd Sm;

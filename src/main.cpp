@@ -772,7 +772,7 @@ void compare_acc_energy(extended_kinematic_chain &my_robot,
     // std::cout << acc_energy_original << '\n';
 }
 
-void test_singular_configuration(){
+void test_singular_configuration_LWR(){
 
     extended_kinematic_chain LWR_robot;
     create_my_LWR_robot(LWR_robot);
@@ -881,7 +881,7 @@ int main(int argc, char* argv[])
     motion_specification LWR_motion3(LWR_robot.chain.getNrOfJoints(), LWR_robot.chain.getNrOfSegments(), NUMBER_OF_CONSTRAINTS);
     motion_specification LWR_motion4(LWR_robot.chain.getNrOfJoints(), LWR_robot.chain.getNrOfSegments(), NUMBER_OF_CONSTRAINTS);
 
-    // test_singular_configuration();
+    // test_singular_configuration_LWR();
 
     std::cout << "Testing LWR robot model with 3 different solvers" << '\n'<<std::endl;
     std::cout << "LWR friction torques:        ";
