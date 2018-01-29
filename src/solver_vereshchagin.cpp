@@ -386,11 +386,16 @@ void Solver_Vereshchagin::final_upwards_sweep(JntArray &q_dotdot, JntArray &torq
         // -> to avoid overwriting ff_torques ->
         // -> Required for extension with friction.
         // torques(j) = constraint_torque;
-
-        //Summing all 3 contributions for true(resulting) torque:
-        //forces from parent joints, constraint forces and bias forces.
-        controlTorque(j) = (-1) * s.totalBias + dot(s.Z, parent_force) + dot(s.Z, constraint_force);
         constraintTorque(j) = dot(s.Z, constraint_force);
+
+        //Summing all 3 contributions for true (resulting) torque:
+        // controlTorque(j) = s.u + constraint_torque + parent_forceProjection;
+
+        //forces from parent joints, constraint forces and bias forces.
+        // controlTorque(j) = (-1) * s.totalBias + dot(s.Z, parent_force);// + dot(s.Z, constraint_force);
+
+        //Actual control torque
+        controlTorque(j) = torques(j) + dot(s.Z, constraint_force);
 
         s.constAccComp = constraint_torque / s.D;
         s.nullspaceAccComp = s.u / s.D;

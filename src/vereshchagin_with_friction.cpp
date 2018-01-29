@@ -126,6 +126,7 @@ void vereshchagin_with_friction::iterate_over_torques(
         solver_.get_link_inertias(articulated_body_inertia_);
         solver_.get_bias_force(bias_force_);
         solver_.get_control_torque(control_tau_);
+        // solver_.get_constraint_torque(control_tau_);
 
         double acc_energy = compute_acc_energy(
                         frame_acceleration_,

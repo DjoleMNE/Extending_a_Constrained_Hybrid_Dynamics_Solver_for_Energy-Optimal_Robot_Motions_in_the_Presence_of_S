@@ -737,6 +737,7 @@ void compare_acc_energy(extended_kinematic_chain &my_robot,
     assert(result3 == 0);
 
     std::cout << "\n"<<"Joint acc: " <<motion3.qdd <<'\n';
+    //
     // for(int i = 0; i < my_robot.chain.getNrOfJoints(); i++){
     //     motion2.feedforward_torque(i) = motion2.feedforward_torque(i) - \
     //     my_robot.joint_static_friction[i] * sign_of(motion2.qdd(i));
@@ -767,10 +768,11 @@ void compare_acc_energy(extended_kinematic_chain &my_robot,
     //     std::cout << "\n" << '\n';
     //     std::cout << motion.qdd(i) << '\n';
     // }
-
+    //
     // std::cout << "Original Solver Acc Energy" << '\n';
     // std::cout << acc_energy_original << '\n';
 }
+
 
 void test_singular_configuration_LWR(){
 
