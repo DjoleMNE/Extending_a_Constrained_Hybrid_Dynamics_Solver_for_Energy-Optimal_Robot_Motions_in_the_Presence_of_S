@@ -365,20 +365,9 @@ void Solver_Vereshchagin::final_upwards_sweep(JntArray &q_dotdot, JntArray &torq
 
 
         //TODO
-        //Maybe only valid for simulation....????
-        //Should the constaint torque become feedforward torque in next iteration??? NO!!!!!!!!!
-        //Does that have phisical meaning >>????
-        //I thnk it is not ok because the constraint forces are always included/defined separately in each iteration
-        // We need constraints torques as output  for example keeping balance in legs-posture!!!!!
         //But the  question is do we need it for simulation of motion....for example to sent it Forward dyn algorithm
-        //But will will those constraint torques be enough to desctibe system motion in simulation...not only constaints  influence motions
-        // also gravity and friction in joints..question is will these torques actually move the arm which is imposed to friction and gravity forces???
-        //Due to this conflict the implementation  of the algorithm needs to be changed.
-        //final control value for torque???...nope!!!! only constraints!!!
-        //Fina control tau consists of 3 parts!!!
-
         //Code Line bellow commented by Djordje Vukcevic....to avoid overwriting ff_torques
-        // torques(j) = constraint_torque;
+        //torques(j) = constraint_torque;
 
         //s.constAccComp = torques(j) / s.D;
         s.constAccComp = constraint_torque / s.D;

@@ -15,8 +15,8 @@ input_data1 = np.loadtxt("plot_data.txt", dtype='double', delimiter=' ')
 input_data2 = np.loadtxt("plot_acc.txt", dtype='double', delimiter=' ')
 
 # Make data.
-X = input_data1[:-1,0]
-Z = input_data1[:-1,1]
+X = input_data1[:,0]
+Z = input_data1[:,1]
 Y = input_data2[:,1]
 
 df = pd.DataFrame({'x': X, 'y': Y, 'z': Z})

@@ -27,7 +27,7 @@ acc_1 = input_data[:-1,1]
 # plt.subplot(121)
 df1 = pd.DataFrame({'x': tau_1, 'y': acc_1})
 slope1, intercept1, r_value1, p_value1, std_err1 = stats.linregress(df1.x,df1.y)
-plt.plot(df1.x, df1.y, 'o', label='Raw data')
+plt.plot(df1.x, df1.y, 'o',label='_nolegend_')
 
 # sns.set_style('ticks')
 #
@@ -35,10 +35,9 @@ plt.plot(df1.x, df1.y, 'o', label='Raw data')
 plt.title('1 DOF', fontsize=25)
 plt.xlabel(r'Friction torque $[Nm]$', fontsize=25)
 plt.ylabel(r'Accelerations energy $[\frac{Nm}{s^2}]$', fontsize=25)
-plt.xlim(xmin=-50, xmax = 50)
+plt.xlim(xmin=-20, xmax = 20)
 plt.xticks(fontsize=18)
 plt.yticks(fontsize=18)
-plt.legend( prop={'size': 18})
 # plt.axis('equal')
 plt.grid()
 
