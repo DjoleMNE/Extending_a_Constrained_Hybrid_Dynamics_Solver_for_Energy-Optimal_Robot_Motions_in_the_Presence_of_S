@@ -17,8 +17,8 @@ input_data = np.loadtxt("plot_acc.txt", dtype='double', delimiter=' ')
 rows = input_data.shape[0]
 
 # Make data.
-tau_1 = input_data[:-1,0]
-acc_1 = input_data[:-1,1]
+tau_1 = input_data[:,0]
+acc_1 = input_data[:,1]
 
 # plot 1
 # ====================================
@@ -33,7 +33,7 @@ plt.plot(df1.x, intercept1 + slope1*df1.x, 'r', label='Line: y={0:.1f}x + {1:.1f
 # sns.set_style('ticks')
 #
 # ax1 = sns.regplot(df1.x, df1.y, line_kws={'label':"y={0:.1f}x+{1:.1f}".format(slope1,intercept1)})
-plt.title('Joint 1', fontsize=25)
+plt.title('1 DOF Robot', fontsize=25)
 plt.xlabel(r'Friction torque $[Nm]$', fontsize=25)
 plt.ylabel(r'Joint accelerations $[\frac{Nm}{s^2}]$', fontsize=25)
 plt.xlim(xmin=-20, xmax = 20)

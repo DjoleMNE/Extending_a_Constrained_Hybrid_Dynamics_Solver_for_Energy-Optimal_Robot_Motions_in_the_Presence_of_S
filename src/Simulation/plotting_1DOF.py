@@ -32,7 +32,7 @@ plt.plot(df1.x, df1.y, 'o',label='_nolegend_')
 # sns.set_style('ticks')
 #
 # ax1 = sns.regplot(df1.x, df1.y, line_kws={'label':"y={0:.1f}x+{1:.1f}".format(slope1,intercept1)})
-plt.title('1 DOF', fontsize=25)
+plt.title('1 DOF Robot', fontsize=25)
 plt.xlabel(r'Friction torque $[Nm]$', fontsize=25)
 plt.ylabel(r'Accelerations energy $[\frac{Nm}{s^2}]$', fontsize=25)
 plt.xlim(xmin=-20, xmax = 20)

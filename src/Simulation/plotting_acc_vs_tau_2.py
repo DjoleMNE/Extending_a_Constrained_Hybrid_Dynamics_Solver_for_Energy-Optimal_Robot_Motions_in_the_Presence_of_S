@@ -17,8 +17,8 @@ input_data = np.loadtxt("plot_acc.txt", dtype='double', delimiter=' ')
 rows = input_data.shape[0]
 
 # Make data.
-tau_2 = input_data[:-1,2]
-acc_2 = input_data[:-1,3]
+tau_2 = input_data[:,2]
+acc_2 = input_data[:,3]
 
 # plot 2
 # ====================================
