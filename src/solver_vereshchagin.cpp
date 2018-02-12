@@ -49,6 +49,7 @@ Solver_Vereshchagin::Solver_Vereshchagin(const Chain& chain_, Twist root_acc, un
 
     //Provide the necessary memory for computing the inverse of M0
     nu_sum.resize(nc);
+    controlTorque.resize(nj);
     M_0_inverse.resize(nc, nc);
     Um = MatrixXd::Identity(nc, nc);
     Vm = MatrixXd::Identity(nc, nc);
@@ -369,6 +370,10 @@ void Solver_Vereshchagin::final_upwards_sweep(JntArray &q_dotdot, JntArray &torq
         //Code Line bellow commented by Djordje Vukcevic....to avoid overwriting ff_torques
         //torques(j) = constraint_torque;
 
+        //Summing all 3 contributions for true(resulting) torque:
+        // feedforward forces, constraint forces and bias forces.
+        controlTorque(j) = s.u + parent_forceProjection + constraint_torque;
+
         //s.constAccComp = torques(j) / s.D;
         s.constAccComp = constraint_torque / s.D;
         s.nullspaceAccComp = s.u / s.D;
@@ -409,6 +414,15 @@ void Solver_Vereshchagin::get_link_inertias(Inertias &h)
     }
 }
 
+void Solver_Vereshchagin::get_control_torque(JntArray &tau_control)
+{
+    //Assersions need to be replaced with run-time errors!
+    //For example errors specified in SolverI class
+    //Because KDL compiles in RELEASE mode!
+
+    assert(tau_control.rows() == controlTorque.rows());
+    for (int i = 0; i < nj; i++) tau_control(i) = controlTorque(i);
+}
 
 //U ...bias or external forces or both????? In Featherstone book is both!
 void Solver_Vereshchagin::get_bias_force(Wrenches &bias)

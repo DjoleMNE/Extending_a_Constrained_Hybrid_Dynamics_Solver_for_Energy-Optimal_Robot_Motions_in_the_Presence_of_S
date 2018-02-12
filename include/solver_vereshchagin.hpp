@@ -76,7 +76,7 @@ public:
     void get_link_acceleration(Twists& xDotdot);
     void get_link_inertias(Inertias &h);
     void get_bias_force(Wrenches &u);
-
+    void get_control_torque(JntArray &tau_control);
 
 private:
     /**
@@ -105,6 +105,7 @@ private:
     unsigned int nj;
     unsigned int ns;
     unsigned int nc;
+    JntArray controlTorque;
     Twist acc_root;
     Jacobian alfa_N;
     Jacobian alfa_N2;
