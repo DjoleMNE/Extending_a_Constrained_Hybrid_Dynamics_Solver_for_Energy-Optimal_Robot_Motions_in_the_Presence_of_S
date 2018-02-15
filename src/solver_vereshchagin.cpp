@@ -364,9 +364,6 @@ void Solver_Vereshchagin::final_upwards_sweep(JntArray &q_dotdot, JntArray &torq
         double constraint_torque = -dot(s.Z, constraint_force);
         //The result should be the torque at this joint.
 
-
-        //TODO
-        //But the  question is do we need it for simulation of motion....for example to sent it Forward dyn algorithm
         //Code Line bellow commented by Djordje Vukcevic....to avoid overwriting ff_torques
         //torques(j) = constraint_torque;
 

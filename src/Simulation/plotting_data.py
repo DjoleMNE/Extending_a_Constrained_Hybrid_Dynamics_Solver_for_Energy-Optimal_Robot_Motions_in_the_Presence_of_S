@@ -32,7 +32,7 @@ fig.colorbar(surf, shrink=0.5, aspect=5)
 ax.set_xlabel(r'Friction torque 1 $[Nm]$', labelpad = 20, fontsize=18)
 ax.set_ylabel(r'Friction torque 2 $[Nm]$', labelpad = 20, fontsize=18)
 ax.set_zlabel(r'Acceleration energy $[\frac{Nm}{s^2}]$', labelpad = 20, fontsize=18)
-
+ax.set_zlim3d(-250,input_data[-1,2]+5)
 class Arrow3D(FancyArrowPatch):
 
     def __init__(self, xs, ys, zs, *args, **kwargs):
@@ -48,7 +48,6 @@ class Arrow3D(FancyArrowPatch):
 a = Arrow3D([input_data[-1,0], input_data[-1,0]], [input_data[-1,1], input_data[-1,1]], [input_data[-1,2], input_data[-1,2]+input_data[-1,2]/10], mutation_scale=20,  lw=1, arrowstyle="-|>", color="k")
 ax.add_artist(a)
 
-ax.text(input_data[-1,0],input_data[-1,1], (input_data[-1,2] +input_data[-1,2]/10),  'Max: %d [%d, %d]' % (input_data[-1,2], input_data[-1,0], input_data[-1,1]), size=15, zorder=1, color='blue')
+ax.text(input_data[-1,0],input_data[-1,1], (input_data[-1,2] +input_data[-1,2]/10),  'Max: %.1f [%.1f, %.1f]' % (input_data[-1,2], input_data[-1,0], input_data[-1,1]), size=15, zorder=1, color='blue')
 
-plt.savefig('acc_energy_surface.pdf')
 plt.show()

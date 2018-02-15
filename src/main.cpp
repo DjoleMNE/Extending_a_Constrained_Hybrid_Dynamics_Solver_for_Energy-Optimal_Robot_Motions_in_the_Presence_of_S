@@ -1,6 +1,6 @@
 /*
 Author(s): Djordje Vukcevic, Sven Schneider
-Copyright (c) [2017]
+Copyright (c) [2018]
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -71,75 +71,6 @@ class motion_specification
         KDL::Wrenches external_force;
 };
 
-void create_my_LWR_robot(extended_kinematic_chain &c)
-{
-    int number_of_joints = 7;
-
-    c.joint_inertia.resize(number_of_joints);
-    for (int i = 0; i < number_of_joints; i++) c.joint_inertia[i] = 0.5;
-
-    c.joint_static_friction.resize(number_of_joints);
-    for (int i = 0; i < number_of_joints; i++) c.joint_static_friction[i] = 40.0;
-
-    //Frames describe pose of the segment(base link) 0 tip, wrt joint 0 frame (inertial frame) - frame 0
-    //Frame defenes pose of joint 1 in respect to joint 0 (inertial frame)
-    //joint 0
-	// c.chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::None),
-	// 			  KDL::Frame::DH_Craig1989(0.0, 0.0, 0.31, 0.0)));
-
-
-	//joint 1
-	c.chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ, 1, 0, c.joint_inertia[0]),
-				  KDL::Frame::DH_Craig1989(0.0, 1.5707963, 0.0, 0.0),
-				  KDL::Frame::DH_Craig1989(0.0, 1.5707963, 0.0, 0.0).Inverse()*KDL::RigidBodyInertia(2,
-										 KDL::Vector::Zero(),
-										 KDL::RotationalInertia(0.0,0.0,0.0115343,0.0,0.0,0.0))));
-
-	//joint 2
-	c.chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ, 1, 0, c.joint_inertia[1]),
-				  KDL::Frame::DH_Craig1989(0.0, -1.5707963, 0.4, 0.0),
-				  KDL::Frame::DH_Craig1989(0.0, -1.5707963, 0.4, 0.0).Inverse()*KDL::RigidBodyInertia(2,
-										   KDL::Vector(0.0,-0.3120511,-0.0038871),
-										   KDL::RotationalInertia(-0.5471572,-0.0000302,-0.5423253,0.0,0.0,0.0018828))));
-
-	//joint 3
-	c.chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ, 1, 0, c.joint_inertia[2]),
-				  KDL::Frame::DH_Craig1989(0.0, -1.5707963, 0.0, 0.0),
-				  KDL::Frame::DH_Craig1989(0.0, -1.5707963, 0.0, 0.0).Inverse()*KDL::RigidBodyInertia(2,
-										   KDL::Vector(0.0,-0.0015515,0.0),
-										   KDL::RotationalInertia(0.0063507,0.0,0.0107804,0.0,0.0,-0.0005147))));
-
-	//joint 4
-	c.chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ, 1, 0, c.joint_inertia[3]),
-				  KDL::Frame::DH_Craig1989(0.0, 1.5707963, 0.39, 0.0),
-				  KDL::Frame::DH_Craig1989(0.0, 1.5707963, 0.39, 0.0).Inverse()*KDL::RigidBodyInertia(2,
-										   KDL::Vector(0.0,0.5216809,0.0),
-										   KDL::RotationalInertia(-1.0436952,0.0,-1.0392780,0.0,0.0,0.0005324))));
-
-	//joint 5
-	c.chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ, 1, 0, c.joint_inertia[4]),
-				  KDL::Frame::DH_Craig1989(0.0, 1.5707963, 0.0, 0.0),
-				  KDL::Frame::DH_Craig1989(0.0, 1.5707963, 0.0, 0.0).Inverse()*KDL::RigidBodyInertia(2,
-										   KDL::Vector(0.0,0.0119891,0.0),
-										   KDL::RotationalInertia(0.0036654,0.0,0.0060429,0.0,0.0,0.0004226))));
-
-	//joint 6
-	c.chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ, 1, 0, c.joint_inertia[5]),
-				  KDL::Frame::DH_Craig1989(0.0, -1.5707963, 0.0, 0.0),
-				  KDL::Frame::DH_Craig1989(0.0, -1.5707963, 0.0, 0.0).Inverse()*KDL::RigidBodyInertia(2,
-										   KDL::Vector(0.0,0.0080787,0.0),
-										   KDL::RotationalInertia(0.0010431,0.0,0.0036376,0.0,0.0,0.0000101))));
-
-    //Frame 8 - end-effector (link 8) frame - at same pose as joint 7, frame == indentity!
-	//joint 7
-	c.chain.addSegment(KDL::Segment(KDL::Joint(KDL::Joint::RotZ, 1, 0, c.joint_inertia[6]),
-				   KDL::Frame::Identity(),
-				   KDL::RigidBodyInertia(2,
-    									   KDL::Vector::Zero(),
-    									   KDL::RotationalInertia(0.000001,0.0,0.0001203,0.0,0.0,0.0))));
-    //In total 8 joints (counting fixed - 0), 8 segments (counting base link 0) and 9 frames
-}
-
 void create_my_1DOF_robot(extended_kinematic_chain &c)
 {
     int number_of_joints = 1;
@@ -180,7 +111,7 @@ void create_my_2DOF_robot(extended_kinematic_chain &c)
 {
     int number_of_joints = 2;
     c.joint_inertia.resize(number_of_joints);
-    for (int i = 0; i < number_of_joints; i++) c.joint_inertia[i] = 0.1;
+    for (int i = 0; i < number_of_joints; i++) c.joint_inertia[i] = 0.0;
 
     c.joint_static_friction.resize(number_of_joints);
     for (int i = 0; i < number_of_joints; i++) c.joint_static_friction[i] = 10.0;
@@ -216,16 +147,18 @@ void create_motion_for_1DOF(motion_specification &m)
     m.q(0) = M_PI / 2.0;
     m.feedforward_torque(0) = 0.0;
 
+    //Negative value of external force, for possitive direction
+    //Because this force enters with minus in calculations of original solver
     KDL::Wrench externalForce(
             KDL::Vector(0.0, 5.0, 0.0), //Force
             KDL::Vector(0.0, 0.0, 0.0)); //Torque
     m.external_force[0] = externalForce;
 
-    KDL::Twist unit_constraint_force_x(
-            KDL::Vector(0.0, 0.0, 0.0),     // linear
-            KDL::Vector(0.0, 0.0, 0.0));    // angular
-    m.end_effector_unit_constraint_forces.setColumn(0, unit_constraint_force_x);
-    m.end_effector_acceleration_energy_setpoint(0) = 0.0;
+    // KDL::Twist unit_constraint_force_x(
+    //         KDL::Vector(0.0, 0.0, 0.0),     // linear
+    //         KDL::Vector(0.0, 0.0, 1.0));    // angular
+    // m.end_effector_unit_constraint_forces.setColumn(0, unit_constraint_force_x);
+    // m.end_effector_acceleration_energy_setpoint(0) = 5.0;
 }
 
 void create_my_motion_specification(motion_specification &m)
@@ -240,12 +173,12 @@ void create_my_motion_specification(motion_specification &m)
     // m.feedforward_torque(1) = 0.0;
 
     KDL::Wrench externalForce1(
-        KDL::Vector(0.0, 5.0, 0.0), //Force
+        KDL::Vector(0.0, 0.0, 0.0), //Force
         KDL::Vector(0.0, 0.0, 0.0)); //Torque
     m.external_force[0] = externalForce1;
 
     KDL::Wrench externalForce2(
-        KDL::Vector(0.0, 0.0, 0.0), //Force
+        KDL::Vector(0.0, 5.0, 0.0), //Force
         KDL::Vector(0.0, 0.0, 0.0)); //Torque
     m.external_force[1] = externalForce2;
 
@@ -260,28 +193,6 @@ void create_my_motion_specification(motion_specification &m)
     //         KDL::Vector(0.0, 0.0, 0.0));    // angular
     // m.end_effector_unit_constraint_forces.setColumn(1, unit_constraint_force_y);
     // m.end_effector_acceleration_energy_setpoint(1) = 0.0;
-    // KDL::Twist unit_constraint_force_z(
-    //         KDL::Vector(0.0, 0.0, 0.0),     // linear
-    //         KDL::Vector(0.0, 0.0, 0.0));    // angular
-    // m.end_effector_unit_constraint_forces.setColumn(2, unit_constraint_force_z);
-    // m.end_effector_acceleration_energy_setpoint(2) = 0.0;
-    //
-    // KDL::Twist unit_constraint_force_x1(
-    //         KDL::Vector(0.0, 0.0, 0.0),     // linear
-    //         KDL::Vector(1.0, 0.0, 0.0));    // angular
-    // m.end_effector_unit_constraint_forces.setColumn(3, unit_constraint_force_x1);
-    // m.end_effector_acceleration_energy_setpoint(3) = 0.0;
-    // KDL::Twist unit_constraint_force_y1(
-    //         KDL::Vector(0.0, 0.0, 0.0),     // linear
-    //         KDL::Vector(0.0, 0.0, 0.0));    // angular
-    // m.end_effector_unit_constraint_forces.setColumn(4, unit_constraint_force_y1);
-    // m.end_effector_acceleration_energy_setpoint(4) = 0.0;
-    // KDL::Twist unit_constraint_force_z1(
-    //         KDL::Vector(0.0, 0.0, 0.0),     // linear
-    //         KDL::Vector(0.0, 0.0, 0.0));    // angular
-    // m.end_effector_unit_constraint_forces.setColumn(5, unit_constraint_force_z1);
-    // m.end_effector_acceleration_energy_setpoint(5) = 0.0;
-
 }
 
 class vereshchagin_with_friction {
@@ -295,6 +206,7 @@ class vereshchagin_with_friction {
               chain_(chain),
               tau_(chain.chain.getNrOfJoints()),
               qdd_(chain.chain.getNrOfJoints()),
+              control_tau_(chain.chain.getNrOfJoints()),
               friction_torque_(chain.chain.getNrOfJoints())
         {
             number_of_frames_ = chain.chain.getNrOfSegments() + 1;
@@ -323,13 +235,14 @@ class vereshchagin_with_friction {
 
             plot_file.open ("/home/djole/Downloads/Master/R_&_D/KDL_GIT/Testing_repo/src/Simulation/plot_data.txt");
             plot_acc.open ("/home/djole/Downloads/Master/R_&_D/KDL_GIT/Testing_repo/src/Simulation/plot_acc.txt");
+            plot_control.open ("/home/djole/Downloads/Master/R_&_D/KDL_GIT/Testing_repo/src/Simulation/plot_control.txt");
 
             iterate_over_torques(m, initial_friction, resolution, 0, NUMBER_OF_STEPS, resulting_torque_set);
             // std::cout << number_of_joints_ << '\n';
             for (int i = 0; i < number_of_joints_ + 1; i++) {
 
                 if(i != number_of_joints_){
-                    plot_file << optimum_torques[i] <<" ";
+                    plot_file << -optimum_torques[i] <<" ";
                 }
 
                 else plot_file << max_acc_energy;
@@ -337,6 +250,7 @@ class vereshchagin_with_friction {
 
             plot_file.close();
             plot_acc.close();
+            plot_control.close();
         }
 
         void iterate_over_torques(
@@ -367,19 +281,21 @@ class vereshchagin_with_friction {
                              tau_);  // tau_ is overwritten!
                      assert(result == 0);
 
-                 solver_.get_link_acceleration(frame_acceleration_);
-                 solver_.get_link_inertias(articulated_body_inertia_);
-                 solver_.get_bias_force(bias_force_);
+                // std::cout <<articulated_body_inertia_[1].H << '\n';
+                solver_.get_link_acceleration(frame_acceleration_);
+                solver_.get_link_inertias(articulated_body_inertia_);
+                solver_.get_bias_force(bias_force_);
+                solver_.get_control_torque(control_tau_);
 
-                 double acc_energy = compute_acc_energy(
-                         frame_acceleration_, articulated_body_inertia_,
-                         bias_force_, qdd_, tau_);
+                double acc_energy = compute_acc_energy(
+                     frame_acceleration_, articulated_body_inertia_,
+                     bias_force_, qdd_, tau_);
                  // std::cout << acc_energy << '\n';
 
                 //write data in the file
                 for (int k = 0; k < number_of_joints_ + 1; k++){
                     if(k != number_of_joints_){
-                        plot_file << resulting_set[k] <<" ";
+                        plot_file << -resulting_set[k] <<" ";
                     }
                     else{
                         plot_file << acc_energy <<"\n";
@@ -388,14 +304,17 @@ class vereshchagin_with_friction {
 
                 for(int e = 0; e < number_of_joints_ ; e++){
                     if(e == number_of_joints_-1){
-                        plot_acc<< friction_torque_(e) <<" "<<qdd_(e);
+                        plot_acc<< -friction_torque_(e) <<" "<<qdd_(e);
+                        plot_control<< -friction_torque_(e) <<" "<<control_tau_(e);
                     }
 
                     else{
-                        plot_acc<< friction_torque_(e) <<" "<<qdd_(e)<<" ";
+                        plot_acc<< -friction_torque_(e) <<" "<<qdd_(e)<<" ";
+                        plot_control<< -friction_torque_(e) <<" "<<control_tau_(e)<<" ";
                     }
                 }
                 plot_acc<<std::endl;
+                plot_control<<std::endl;
 
                 if (acc_energy > max_acc_energy){
                     max_acc_energy = acc_energy;
@@ -454,6 +373,8 @@ class vereshchagin_with_friction {
         KDL::JntArray tau_; // as input to original solver (sum of external feed-forward torque and friction torque), overwritten during call!
         KDL::JntArray qdd_; // as input to original solver, overwritten during call!
         KDL::JntArray friction_torque_;
+        KDL::JntArray control_tau_;
+
         KDL::Solver_Vereshchagin solver_;
         int number_of_frames_;
         int number_of_joints_;
@@ -467,6 +388,7 @@ class vereshchagin_with_friction {
         std::vector<double> optimum_torques;
 
         std::ofstream plot_file;
+        std::ofstream plot_control;
         std::ofstream plot_acc;
 };
 
@@ -475,20 +397,6 @@ void sample_full_acceleration_energy(motion_specification &m,
                                     KDL::Twist acc_root,
                                     int number_of_constraints)
 {
-    // m.q(0) = M_PI / 2.0;
-    // m.feedforward_torque(0) = 0.0;
-    //
-    // KDL::Wrench externalForce(
-    //     KDL::Vector(0.0, 5.0, 0.0), //Force
-    //     KDL::Vector(0.0, 0.0, 0.0)); //Torque
-    // m.external_force[0] = externalForce;
-    //
-    // KDL::Twist unit_constraint_force_x(
-    //         KDL::Vector(0.0, 0.0, 0.0),     // linear
-    //         KDL::Vector(0.0, 0.0, 0.0));    // angular
-    // m.end_effector_unit_constraint_forces.setColumn(0, unit_constraint_force_x);
-    // m.end_effector_acceleration_energy_setpoint(0) = 0.0;
-
     KDL::JntArray tau_(1);
     KDL::JntArray qdd_(1);
     KDL::JntArray friction_torque_(1);
@@ -564,33 +472,13 @@ int main(int argc, char* argv[])
 
     //arm root acceleration
     KDL::Vector linearAcc(0.0, 0.0, 0.0); //gravitational acceleration along Y
-    // KDL::Vector linearAcc(0.0, 0.0, - 9.81); //gravitational acceleration along Z
+    // KDL::Vector linearAcc(0.0, 0.0, - 9.8); //gravitational acceleration along Z
     KDL::Vector angularAcc(0.0, 0.0, 0.0);
     KDL::Twist root_acc(linearAcc, angularAcc);
 
-    sample_full_acceleration_energy(my_motion, my_robot, root_acc, 1);
-    // vereshchagin_with_friction solver(my_robot, root_acc, NUMBER_OF_CONSTRAINTS);
-    // solver.solve(my_motion);
+    // sample_full_acceleration_energy(my_motion, my_robot, root_acc, 1);
+    vereshchagin_with_friction solver(my_robot, root_acc, NUMBER_OF_CONSTRAINTS);
+    solver.solve(my_motion);
 
-
-    // KDL::Solver_Vereshchagin ver_solver(my_robot.chain, root_acc, NUMBER_OF_CONSTRAINTS);
-    // int result = ver_solver.CartToJnt(
-    //              my_motion.q, my_motion.qd, my_motion.qdd, //qdd_ is overwritten by accual/resulting acceleration
-    //              my_motion.end_effector_unit_constraint_forces,       // alpha
-    //              my_motion.end_effector_acceleration_energy_setpoint, // beta
-    //              my_motion.external_force,
-    //              my_motion.feedforward_torque);  // tau_ is overwritten!
-    //      assert(result == 0);
-
-
-    // std::cout << my_motion.qdd << '\n';
-    // std::vector<KDL::Twist> xDotdot;
-    // xDotdot.resize(my_robot.chain.getNrOfSegments()+1);
-    // ver_solver.get_link_acceleration(xDotdot);
-    //
-    // for (size_t i = 0; i < my_robot.chain.getNrOfSegments()+1; i++) {
-    //     std::cout << xDotdot[i] << '\n';
-    // }
-    
 	return 0;
 }
