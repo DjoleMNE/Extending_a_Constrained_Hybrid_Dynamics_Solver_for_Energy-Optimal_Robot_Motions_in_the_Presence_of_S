@@ -190,8 +190,7 @@ double vereshchagin_with_friction::compute_acc_energy(
 void vereshchagin_with_friction::select_non_moving_joints(motion_specification &m, KDL::JntArray &temp_friction_torques){
 
     for (int i = 0; i < number_of_joints_; i++) {
-        //TODO check for the right 0 treshold!!!!! Best ask Sven for float inacuracy
-        if (abs(m.qd(i)) > 0.01){
+        if (abs(m.qd(i)) > 0.001){
             temp_friction_torques(i) = 0;
         }
         else {
