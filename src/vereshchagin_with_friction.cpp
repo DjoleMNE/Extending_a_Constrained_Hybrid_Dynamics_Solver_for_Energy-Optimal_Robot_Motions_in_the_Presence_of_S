@@ -175,14 +175,13 @@ double vereshchagin_with_friction::compute_acc_energy(
     double acc_energy_joint = 0.0;
     for (int i = 0; i < number_of_joints_; i++)  {
         acc_energy_joint += 0.5 * (qdd(i) * chain_.joint_inertia[i] * qdd(i));
-        acc_energy_joint -= 0.5 * (tau(i) * qdd(i));
-        // acc_energy_joint += qdd(i);
+        acc_energy_joint -=  (tau(i) * qdd(i));
     }
 
     double acc_energy_segment = 0.0;
     for (int i = 1; i < number_of_frames_; i++) {
         acc_energy_segment += 0.5 * dot(xdd[i], h[i] * xdd[i]);
-        acc_energy_segment += 0.5 * dot(bias_force[i], xdd[i]);
+        acc_energy_segment +=  dot(bias_force[i], xdd[i]);
     }
 
     return acc_energy_joint + acc_energy_segment;
