@@ -389,7 +389,7 @@ void Solver_Vereshchagin::final_upwards_sweep(JntArray &q_dotdot, JntArray &torq
         constraintTorque(j) = dot(s.Z, constraint_force);
 
         //Summing all 3 contributions for true (resulting) torque:
-        // controlTorque(j) = s.u + constraint_torque + parent_forceProjection;
+        controlTorque(j) = s.u + constraint_torque + parent_forceProjection;
 
         s.constAccComp = constraint_torque / s.D;
         s.nullspaceAccComp = s.u / s.D;
